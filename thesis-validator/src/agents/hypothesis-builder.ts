@@ -1,0 +1,563 @@
+/**
+ * Hypothesis Builder Agent - Constructs investment thesis trees
+ *
+ * Responsibilities:
+ * - Decompose investment theses into testable hypotheses
+ * - Define causal relationships between hypotheses
+ * - Identify key assumptions requiring validation
+ * - Build hypothesis trees with confidence scoring
+ */
+
+import { BaseAgent, createTool } from './base-agent.js';
+import type { AgentResult, AgentTool } from './base-agent.js';
+import type {
+  HypothesisNode,
+  HypothesisDecomposition,
+  CausalRelationship,
+} from '../models/hypothesis.js';
+import { createHypothesisUpdatedEvent, createEvent } from '../models/events.js';
+
+/**
+ * Hypothesis builder input
+ */
+export interface HypothesisBuilderInput {
+  thesis: string;
+  context?: {
+    sector?: string;
+    dealType?: string;
+    targetCompany?: string;
+    additionalContext?: string;
+  };
+  existingHypotheses?: HypothesisNode[];
+}
+
+/**
+ * Hypothesis builder output
+ */
+export interface HypothesisBuilderOutput {
+  rootThesis: HypothesisNode;
+  decomposition: HypothesisDecomposition;
+  hypotheses: HypothesisNode[];
+  relationships: Array<{
+    sourceId: string;
+    targetId: string;
+    relationship: CausalRelationship;
+    strength: number;
+    reasoning: string;
+  }>;
+  keyQuestions: string[];
+}
+
+/**
+ * Hypothesis Builder Agent implementation
+ */
+export class HypothesisBuilderAgent extends BaseAgent {
+  constructor() {
+    super({
+      id: 'hypothesis_builder',
+      name: 'Hypothesis Builder',
+      systemPrompt: `You are the Hypothesis Builder Agent for Thesis Validator, specializing in structured decomposition of investment theses.
+
+Your role is to:
+1. Parse investment theses into explicit, testable hypotheses
+2. Identify causal relationships and dependencies
+3. Surface hidden assumptions that need validation
+4. Create a logical tree structure connecting all elements
+
+When decomposing theses:
+- Break down to atomic, testable statements
+- Distinguish between market hypotheses, company hypotheses, and value creation hypotheses
+- Identify both necessary conditions (AND relationships) and sufficient conditions (OR relationships)
+- Flag high-risk assumptions that could invalidate the thesis
+- Consider second-order effects and dependencies
+
+For each hypothesis:
+- Assign initial confidence (0-1) based on how well-supported it appears
+- Identify what evidence would validate or refute it
+- Note any analogous situations from past deals
+
+Output structured JSON with clear hierarchy and relationships.`,
+    });
+  }
+
+  /**
+   * Execute hypothesis building
+   */
+  async execute(input: HypothesisBuilderInput): Promise<AgentResult<HypothesisBuilderOutput>> {
+    const startTime = Date.now();
+
+    if (!this.context) {
+      return this.createResult(false, undefined, {
+        error: 'No context set',
+        startTime,
+      });
+    }
+
+    this.updateStatus('thinking', 'Analyzing investment thesis');
+
+    try {
+      // Step 1: Initial decomposition
+      const decomposition = await this.decomposeThesis(input);
+
+      // Step 2: Create hypothesis nodes
+      const hypotheses = await this.createHypothesisNodes(decomposition, input);
+
+      // Step 3: Build relationships
+      const relationships = await this.buildRelationships(hypotheses, decomposition);
+
+      // Step 4: Store in deal memory
+      const rootThesis = hypotheses.find((h) => h.type === 'thesis');
+      if (!rootThesis) {
+        throw new Error('Failed to create root thesis');
+      }
+
+      // Store hypotheses in memory
+      for (const hypothesis of hypotheses) {
+        const embedding = await this.embed(hypothesis.content);
+        await this.context.dealMemory.createHypothesis(
+          {
+            type: hypothesis.type,
+            content: hypothesis.content,
+            parent_id: undefined,
+          },
+          this.config.id,
+          embedding
+        );
+      }
+
+      // Store relationships
+      for (const rel of relationships) {
+        await this.context.dealMemory.addCausalEdge({
+          source_id: rel.sourceId,
+          target_id: rel.targetId,
+          relationship: rel.relationship,
+          strength: rel.strength,
+          reasoning: rel.reasoning,
+        });
+      }
+
+      // Emit hypothesis created events
+      this.emitEvent(createEvent(
+        'hypothesis.created',
+        this.context.engagementId,
+        {
+          hypothesis_id: rootThesis.id,
+          content: rootThesis.content,
+          type: 'thesis',
+          hypothesis_count: hypotheses.length,
+        },
+        this.config.id
+      ));
+
+      this.updateStatus('idle', 'Hypothesis tree built');
+
+      return this.createResult(true, {
+        rootThesis,
+        decomposition,
+        hypotheses,
+        relationships,
+        keyQuestions: decomposition.key_questions,
+      }, {
+        reasoning: `Created hypothesis tree with ${hypotheses.length} nodes and ${relationships.length} relationships`,
+        startTime,
+      });
+    } catch (error) {
+      this.updateStatus('error', error instanceof Error ? error.message : 'Unknown error');
+
+      return this.createResult(false, undefined, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        startTime,
+      });
+    }
+  }
+
+  /**
+   * Decompose thesis into structured components
+   */
+  private async decomposeThesis(input: HypothesisBuilderInput): Promise<HypothesisDecomposition> {
+    const tools = this.getTools();
+
+    const prompt = `Decompose the following investment thesis into testable hypotheses:
+
+THESIS: ${input.thesis}
+
+${input.context?.sector ? `Sector: ${input.context.sector}` : ''}
+${input.context?.dealType ? `Deal Type: ${input.context.dealType}` : ''}
+${input.context?.targetCompany ? `Target Company: ${input.context.targetCompany}` : ''}
+${input.context?.additionalContext ? `Additional Context: ${input.context.additionalContext}` : ''}
+
+Analyze this thesis and provide:
+1. Sub-theses: Major components that must be true for the overall thesis to hold
+2. Assumptions: Underlying beliefs that may not be explicitly stated but are critical
+3. Key Questions: What we need to answer to validate or refute each component
+
+For each sub-thesis and assumption, rate:
+- Importance (0-1): How critical is this to the overall thesis?
+- Testability (0-1): How easily can we find evidence to test this?
+- Risk Level: low/medium/high based on potential impact if wrong
+
+Output as JSON:
+{
+  "original_thesis": "...",
+  "sub_theses": [
+    { "content": "...", "importance": 0.9 }
+  ],
+  "assumptions": [
+    { "content": "...", "testability": 0.7, "risk_level": "high" }
+  ],
+  "key_questions": ["..."]
+}`;
+
+    const response = await this.callLLMWithTools(prompt, tools);
+    const decomposition = this.parseJSON<HypothesisDecomposition>(response.content);
+
+    if (!decomposition) {
+      throw new Error('Failed to parse thesis decomposition');
+    }
+
+    return decomposition;
+  }
+
+  /**
+   * Create hypothesis nodes from decomposition
+   */
+  private async createHypothesisNodes(
+    decomposition: HypothesisDecomposition,
+    input: HypothesisBuilderInput
+  ): Promise<HypothesisNode[]> {
+    const hypotheses: HypothesisNode[] = [];
+    const now = Date.now();
+
+    // Create root thesis node
+    const rootThesis: HypothesisNode = {
+      id: crypto.randomUUID(),
+      type: 'thesis',
+      content: decomposition.original_thesis || input.thesis,
+      confidence: 0.5, // Start at neutral
+      status: 'untested',
+      metadata: {
+        created_at: now,
+        updated_at: now,
+        created_by: this.config.id,
+        source_refs: [],
+      },
+    };
+    hypotheses.push(rootThesis);
+
+    // Create sub-thesis nodes
+    for (const subThesis of decomposition.sub_theses) {
+      hypotheses.push({
+        id: crypto.randomUUID(),
+        type: 'sub_thesis',
+        content: subThesis.content,
+        confidence: 0.5,
+        status: 'untested',
+        metadata: {
+          created_at: now,
+          updated_at: now,
+          created_by: this.config.id,
+          source_refs: [],
+        },
+      });
+    }
+
+    // Create assumption nodes
+    for (const assumption of decomposition.assumptions) {
+      hypotheses.push({
+        id: crypto.randomUUID(),
+        type: 'assumption',
+        content: assumption.content,
+        confidence: 0.5,
+        status: 'untested',
+        metadata: {
+          created_at: now,
+          updated_at: now,
+          created_by: this.config.id,
+          source_refs: [],
+        },
+      });
+    }
+
+    return hypotheses;
+  }
+
+  /**
+   * Build causal relationships between hypotheses
+   */
+  private async buildRelationships(
+    hypotheses: HypothesisNode[],
+    decomposition: HypothesisDecomposition
+  ): Promise<Array<{
+    sourceId: string;
+    targetId: string;
+    relationship: CausalRelationship;
+    strength: number;
+    reasoning: string;
+  }>> {
+    const relationships: Array<{
+      sourceId: string;
+      targetId: string;
+      relationship: CausalRelationship;
+      strength: number;
+      reasoning: string;
+    }> = [];
+
+    const rootThesis = hypotheses.find((h) => h.type === 'thesis');
+    if (!rootThesis) return relationships;
+
+    // Link sub-theses to root
+    const subTheses = hypotheses.filter((h) => h.type === 'sub_thesis');
+    for (const subThesis of subTheses) {
+      relationships.push({
+        sourceId: subThesis.id,
+        targetId: rootThesis.id,
+        relationship: 'supports',
+        strength: 0.8,
+        reasoning: 'Sub-thesis supports overall thesis',
+      });
+    }
+
+    // Link assumptions to sub-theses
+    const assumptions = hypotheses.filter((h) => h.type === 'assumption');
+    for (const assumption of assumptions) {
+      // Find most relevant sub-thesis based on content overlap
+      let bestMatch = subTheses[0];
+      let bestScore = 0;
+
+      for (const subThesis of subTheses) {
+        const score = this.calculateContentSimilarity(assumption.content, subThesis.content);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = subThesis;
+        }
+      }
+
+      if (bestMatch) {
+        relationships.push({
+          sourceId: assumption.id,
+          targetId: bestMatch.id,
+          relationship: 'requires',
+          strength: 0.7,
+          reasoning: 'Assumption required for sub-thesis validity',
+        });
+      }
+    }
+
+    // Use LLM to identify additional relationships
+    const additionalRelationships = await this.identifyAdditionalRelationships(hypotheses);
+    relationships.push(...additionalRelationships);
+
+    return relationships;
+  }
+
+  /**
+   * Use LLM to identify additional relationships
+   */
+  private async identifyAdditionalRelationships(
+    hypotheses: HypothesisNode[]
+  ): Promise<Array<{
+    sourceId: string;
+    targetId: string;
+    relationship: CausalRelationship;
+    strength: number;
+    reasoning: string;
+  }>> {
+    const hypothesisList = hypotheses.map((h) => ({
+      id: h.id,
+      type: h.type,
+      content: h.content,
+    }));
+
+    const prompt = `Analyze these hypotheses and identify additional causal relationships:
+
+${JSON.stringify(hypothesisList, null, 2)}
+
+For each relationship, specify:
+- source_id: The hypothesis that provides support/evidence
+- target_id: The hypothesis that depends on the source
+- relationship: "requires" | "supports" | "contradicts" | "implies"
+- strength: 0-1 indicating relationship strength
+- reasoning: Brief explanation
+
+Focus on:
+- Dependencies that might not be obvious
+- Potential contradictions between hypotheses
+- Implications that follow from combinations of hypotheses
+
+Output as JSON array:
+[
+  { "source_id": "...", "target_id": "...", "relationship": "...", "strength": 0.8, "reasoning": "..." }
+]`;
+
+    const response = await this.callLLM(prompt);
+    const parsed = this.parseJSON<Array<{
+      source_id: string;
+      target_id: string;
+      relationship: CausalRelationship;
+      strength: number;
+      reasoning: string;
+    }>>(response.content);
+
+    if (!parsed || !Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map((r) => ({
+      sourceId: r.source_id,
+      targetId: r.target_id,
+      relationship: r.relationship,
+      strength: r.strength,
+      reasoning: r.reasoning,
+    }));
+  }
+
+  /**
+   * Calculate content similarity (simple word overlap)
+   */
+  private calculateContentSimilarity(text1: string, text2: string): number {
+    const words1 = new Set(text1.toLowerCase().split(/\W+/).filter((w) => w.length > 3));
+    const words2 = new Set(text2.toLowerCase().split(/\W+/).filter((w) => w.length > 3));
+
+    let overlap = 0;
+    for (const word of words1) {
+      if (words2.has(word)) overlap++;
+    }
+
+    return overlap / Math.max(words1.size, words2.size, 1);
+  }
+
+  /**
+   * Get builder tools
+   */
+  private getTools(): AgentTool[] {
+    return [
+      createTool(
+        'search_similar_theses',
+        'Search for similar historical theses in institutional memory',
+        {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query' },
+            sector: { type: 'string', description: 'Sector filter' },
+          },
+          required: ['query'],
+        },
+        async (input) => {
+          if (!this.context?.institutionalMemory) {
+            return { results: [] };
+          }
+          const embedding = await this.embed(input['query'] as string);
+          const results = await this.context.institutionalMemory.searchPatterns(embedding, {
+            top_k: 5,
+            sector: input['sector'] as any,
+          });
+          return { results };
+        }
+      ),
+
+      createTool(
+        'get_existing_hypotheses',
+        'Get existing hypotheses for the engagement',
+        { type: 'object', properties: {} },
+        async () => {
+          if (!this.context) {
+            return { hypotheses: [] };
+          }
+          const hypotheses = await this.context.dealMemory.getAllHypotheses();
+          return { hypotheses };
+        }
+      ),
+
+      createTool(
+        'check_assumption_validity',
+        'Check if an assumption has been tested in past deals',
+        {
+          type: 'object',
+          properties: {
+            assumption: { type: 'string', description: 'The assumption to check' },
+          },
+          required: ['assumption'],
+        },
+        async (input) => {
+          if (!this.context?.institutionalMemory) {
+            return { found: false };
+          }
+          const embedding = await this.embed(input['assumption'] as string);
+          const results = await this.context.institutionalMemory.retrieveReflexions(embedding, {
+            top_k: 3,
+            min_score: 0.7,
+          });
+          return {
+            found: results.length > 0,
+            similar_experiences: results.map((r) => ({
+              content: r.content,
+              outcome: r.metadata['was_successful'],
+            })),
+          };
+        }
+      ),
+    ];
+  }
+
+  /**
+   * Refine hypotheses based on new evidence
+   */
+  async refineHypotheses(
+    hypothesisIds: string[],
+    newEvidence: Array<{ content: string; sentiment: 'supporting' | 'contradicting' | 'neutral' }>
+  ): Promise<void> {
+    if (!this.context) return;
+
+    for (const hypothesisId of hypothesisIds) {
+      const hypothesis = await this.context.dealMemory.getHypothesis(hypothesisId);
+      if (!hypothesis) continue;
+
+      // Calculate confidence adjustment based on evidence
+      let confidenceDelta = 0;
+      for (const evidence of newEvidence) {
+        if (evidence.sentiment === 'supporting') {
+          confidenceDelta += 0.05;
+        } else if (evidence.sentiment === 'contradicting') {
+          confidenceDelta -= 0.1;
+        }
+      }
+
+      const newConfidence = Math.max(0, Math.min(1, hypothesis.confidence + confidenceDelta));
+      let newStatus = hypothesis.status;
+
+      if (newConfidence >= 0.8) {
+        newStatus = 'supported';
+      } else if (newConfidence <= 0.2) {
+        newStatus = 'refuted';
+      } else if (newEvidence.some((e) => e.sentiment === 'contradicting')) {
+        newStatus = 'challenged';
+      }
+
+      await this.context.dealMemory.updateHypothesisConfidence(
+        hypothesisId,
+        newConfidence,
+        newStatus
+      );
+
+      // Emit update event
+      this.emitEvent(createHypothesisUpdatedEvent(
+        this.context.engagementId,
+        hypothesisId,
+        {
+          confidence: newConfidence,
+          confidence_delta: confidenceDelta,
+          status: newStatus,
+          previous_status: hypothesis.status,
+        },
+        this.config.id
+      ));
+    }
+  }
+}
+
+/**
+ * Create a hypothesis builder agent instance
+ */
+export function createHypothesisBuilderAgent(): HypothesisBuilderAgent {
+  return new HypothesisBuilderAgent();
+}
