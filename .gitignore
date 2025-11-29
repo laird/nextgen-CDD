@@ -3,6 +3,11 @@ node_modules/
 
 # Build output
 dist/
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+!eslint.config.js
 
 # Environment files
 .env
