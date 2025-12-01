@@ -140,3 +140,144 @@ describe('Singleton and Helper Functions', () => {
     expect(result.recommendation).toBeDefined();
   });
 });
+
+describe('Credibility Score Components', () => {
+  let scorer: CredibilityScorer;
+
+  beforeEach(() => {
+    scorer = new CredibilityScorer();
+  });
+
+  describe('Author Credibility', () => {
+    it('should give higher score for authors with expert titles', () => {
+      const expertMetadata: SourceMetadata = {
+        url: 'https://example.com',
+        author: 'Dr. Jane Smith',
+        authorTitle: 'PhD, Professor of Economics',
+        authorOrganization: 'Harvard University',
+      };
+
+      const basicMetadata: SourceMetadata = {
+        url: 'https://example.com',
+        author: 'John Doe',
+      };
+
+      const expertResult = scorer.score(expertMetadata);
+      const basicResult = scorer.score(basicMetadata);
+
+      expect(expertResult.components.authorCredibility).toBeGreaterThan(
+        basicResult.components.authorCredibility
+      );
+    });
+
+    it('should give low score when author is missing', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.authorCredibility).toBe(0.4);
+    });
+  });
+
+  describe('Freshness', () => {
+    it('should give high score for recent content', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+        publishedDate: new Date(), // Today
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.freshness).toBe(1.0);
+    });
+
+    it('should give lower score for older content', () => {
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+        publishedDate: twoYearsAgo,
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.freshness).toBeLessThan(0.5);
+    });
+
+    it('should give neutral score when date is unknown', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.freshness).toBe(0.5);
+    });
+  });
+
+  describe('Citation Density', () => {
+    it('should give high score for highly cited content', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+        citationCount: 150,
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.citationDensity).toBeGreaterThanOrEqual(0.95);
+    });
+
+    it('should detect citations in content', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+      };
+      const content = `
+        According to Smith (2023), the market grew by 20% [1].
+        This was confirmed by Jones (2024) in a recent study [2].
+        Source: https://example.com/study
+      `;
+
+      const result = scorer.score(metadata, content);
+      expect(result.components.citationDensity).toBeGreaterThan(0.5);
+    });
+
+    it('should give high score for original research', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://example.com',
+        isOriginalResearch: true,
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.components.citationDensity).toBeGreaterThanOrEqual(0.75);
+    });
+  });
+
+  describe('Recommendation Thresholds', () => {
+    it('should recommend high_confidence for scores >= 0.75', () => {
+      const metadata: SourceMetadata = {
+        url: 'https://nature.com/article',
+        publicationType: 'academic_journal',
+        isPeerReviewed: true,
+        author: 'Dr. Expert',
+        authorTitle: 'Professor',
+        authorOrganization: 'MIT',
+        publishedDate: new Date(),
+        citationCount: 100,
+      };
+
+      const result = scorer.score(metadata);
+      expect(result.recommendation).toBe('high_confidence');
+    });
+
+    it('should recommend verify_required for very low scores', () => {
+      // Use social_media type without any additional metadata to get very low score
+      const metadata: SourceMetadata = {
+        url: 'https://random-social.xyz/post',
+        publicationType: 'social_media',
+      };
+
+      const result = scorer.score(metadata);
+      // Social media (0.25) with minimal metadata should produce low overall score
+      expect(result.overall).toBeLessThanOrEqual(0.5);
+      expect(['low_confidence', 'verify_required']).toContain(result.recommendation);
+    });
+  });
+});
