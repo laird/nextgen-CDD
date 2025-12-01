@@ -17,13 +17,14 @@ export {
 /**
  * Get configuration based on environment
  */
-export function getConfig(): import('./default.js').Config {
+export async function getConfig(): Promise<import('./default.js').Config> {
   const env = process.env['NODE_ENV'];
 
   if (env === 'production') {
-    const { getProductionConfig } = require('./production.js');
+    const { getProductionConfig } = await import('./production.js');
     return getProductionConfig();
   }
 
-  return require('./default.js').defaultConfig;
+  const { defaultConfig } = await import('./default.js');
+  return defaultConfig;
 }
