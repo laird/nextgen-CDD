@@ -5,6 +5,7 @@ import { useEngagements } from '../../hooks/useAPI.js';
 
 interface EngagementsTabProps {
   serverUrl: string;
+  authToken?: string | undefined;
 }
 
 function formatDate(timestamp: number): string {
@@ -48,8 +49,8 @@ function formatStatus(status: Engagement['status']): string {
   }
 }
 
-export function EngagementsTab({ serverUrl }: EngagementsTabProps): React.ReactElement {
-  const { engagements, loading, error } = useEngagements(serverUrl);
+export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): React.ReactElement {
+  const { engagements, loading, error } = useEngagements(serverUrl, authToken);
 
   // Loading state
   if (loading) {

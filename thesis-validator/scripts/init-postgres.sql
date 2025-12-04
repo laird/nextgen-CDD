@@ -1,0 +1,3 @@
+-- PostgreSQL initialization script
+-- Database and user are already created by environment variables
+-- Additional initialization can be added here if needed

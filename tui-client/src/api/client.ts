@@ -15,14 +15,20 @@ export class ThesisValidatorClient {
   public readonly baseURL: string;
   private readonly http: AxiosInstance;
 
-  constructor(baseURL: string) {
+  constructor(baseURL: string, authToken?: string) {
     this.baseURL = baseURL;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     this.http = axios.create({
       baseURL,
       timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     // Add response interceptor for error handling

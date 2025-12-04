@@ -7,9 +7,10 @@ import { useHealthCheck } from './hooks/useAPI.js';
 
 interface AppProps {
   serverUrl: string;
+  authToken?: string | undefined;
 }
 
-export function App({ serverUrl }: AppProps): React.ReactElement {
+export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
   const { isOnline } = useHealthCheck(serverUrl);
   const { exit } = useApp();
@@ -73,7 +74,7 @@ export function App({ serverUrl }: AppProps): React.ReactElement {
 
       {/* Content Area */}
       <Box flexGrow={1} paddingX={1} paddingY={1}>
-        {activeTab === 0 && <EngagementsTab serverUrl={serverUrl} />}
+        {activeTab === 0 && <EngagementsTab serverUrl={serverUrl} authToken={authToken} />}
         {activeTab === 1 && <Text>Research Tab - Press 1-5 to switch tabs</Text>}
         {activeTab === 2 && <Text>Evidence Tab - Press 1-5 to switch tabs</Text>}
         {activeTab === 3 && <Text>Hypothesis Tab - Press 1-5 to switch tabs</Text>}

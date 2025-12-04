@@ -11,6 +11,7 @@ interface UseEngagementsResult {
 
 export function useEngagements(
   serverUrl: string,
+  authToken?: string,
   filters?: EngagementFilters
 ): UseEngagementsResult {
   const [engagements, setEngagements] = useState<Engagement[]>([]);
@@ -18,7 +19,10 @@ export function useEngagements(
   const [error, setError] = useState<string | null>(null);
 
   // Create API client instance (memoized to avoid recreation)
-  const client = useMemo(() => new ThesisValidatorClient(serverUrl), [serverUrl]);
+  const client = useMemo(
+    () => new ThesisValidatorClient(serverUrl, authToken),
+    [serverUrl, authToken]
+  );
 
   const fetchEngagements = async () => {
     try {
