@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useApp, useInput } from 'ink';
 
 interface AppProps {
   serverUrl: string;
@@ -7,6 +7,27 @@ interface AppProps {
 
 export function App({ serverUrl }: AppProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
+  const { exit } = useApp();
+
+  // Handle keyboard input
+  useInput((input, key) => {
+    // Tab switching
+    if (input === '1') setActiveTab(0);
+    if (input === '2') setActiveTab(1);
+    if (input === '3') setActiveTab(2);
+    if (input === '4') setActiveTab(3);
+    if (input === '5') setActiveTab(4);
+
+    // Quit
+    if (input === 'q' || input === 'Q') {
+      exit();
+    }
+
+    // Ctrl+C also quits
+    if (key.ctrl && input === 'c') {
+      exit();
+    }
+  });
 
   return (
     <Box flexDirection="column" height="100%">
@@ -36,17 +57,17 @@ export function App({ serverUrl }: AppProps): React.ReactElement {
 
       {/* Content Area */}
       <Box flexGrow={1} paddingX={1} paddingY={1}>
-        {activeTab === 0 && <Text>Engagements Tab - Coming Soon</Text>}
-        {activeTab === 1 && <Text>Research Tab - Coming Soon</Text>}
-        {activeTab === 2 && <Text>Evidence Tab - Coming Soon</Text>}
-        {activeTab === 3 && <Text>Hypothesis Tab - Coming Soon</Text>}
-        {activeTab === 4 && <Text>Monitor Tab - Coming Soon</Text>}
+        {activeTab === 0 && <Text>Engagements Tab - Press 1-5 to switch tabs</Text>}
+        {activeTab === 1 && <Text>Research Tab - Press 1-5 to switch tabs</Text>}
+        {activeTab === 2 && <Text>Evidence Tab - Press 1-5 to switch tabs</Text>}
+        {activeTab === 3 && <Text>Hypothesis Tab - Press 1-5 to switch tabs</Text>}
+        {activeTab === 4 && <Text>Monitor Tab - Press 1-5 to switch tabs</Text>}
       </Box>
 
       {/* Footer */}
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text color="gray">
-          ↑↓: Navigate  Enter: Select  /: Search  ?: Help
+          1-5: Switch Tabs  Q: Quit  ?: Help
         </Text>
       </Box>
     </Box>
