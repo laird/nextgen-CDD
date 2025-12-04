@@ -10,6 +10,14 @@
  * - Comparables Finder: Pattern matching
  */
 
+// Direct imports for createAgentSwarm to avoid circular dependency issues
+import { createConductorAgent as _createConductorAgent, ConductorAgent } from './conductor.js';
+import { createHypothesisBuilderAgent as _createHypothesisBuilderAgent, HypothesisBuilderAgent } from './hypothesis-builder.js';
+import { createEvidenceGathererAgent as _createEvidenceGathererAgent, EvidenceGathererAgent } from './evidence-gatherer.js';
+import { createContradictionHunterAgent as _createContradictionHunterAgent, ContradictionHunterAgent } from './contradiction-hunter.js';
+import { createExpertSynthesizerAgent as _createExpertSynthesizerAgent, ExpertSynthesizerAgent } from './expert-synthesizer.js';
+import { createComparablesFinderAgent as _createComparablesFinderAgent, ComparablesFinderAgent } from './comparables-finder.js';
+
 // Base agent
 export {
   BaseAgent,
@@ -87,12 +95,13 @@ export function createAgentSwarm(): {
   expertSynthesizer: ExpertSynthesizerAgent;
   comparablesFinder: ComparablesFinderAgent;
 } {
-  const conductor = createConductorAgent();
-  const hypothesisBuilder = createHypothesisBuilderAgent();
-  const evidenceGatherer = createEvidenceGathererAgent();
-  const contradictionHunter = createContradictionHunterAgent();
-  const expertSynthesizer = createExpertSynthesizerAgent();
-  const comparablesFinder = createComparablesFinderAgent();
+  // Use the directly imported factory functions to avoid circular dependency issues
+  const conductor = _createConductorAgent();
+  const hypothesisBuilder = _createHypothesisBuilderAgent();
+  const evidenceGatherer = _createEvidenceGathererAgent();
+  const contradictionHunter = _createContradictionHunterAgent();
+  const expertSynthesizer = _createExpertSynthesizerAgent();
+  const comparablesFinder = _createComparablesFinderAgent();
 
   // Register agents with conductor
   conductor.registerAgent('hypothesis_builder', async (input, context) => {

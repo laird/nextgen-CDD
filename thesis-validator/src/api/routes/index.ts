@@ -8,9 +8,11 @@ export {
   updateEngagement,
 } from './engagements.js';
 
+// Use in-memory research implementation (research.js) instead of BullMQ/PostgreSQL (research-bullmq.js)
+// since engagements are stored in-memory
 export {
   registerResearchRoutes,
-} from './research-bullmq.js';
+} from './research.js';
 
 export {
   registerEvidenceRoutes,

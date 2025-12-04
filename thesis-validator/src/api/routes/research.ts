@@ -4,6 +4,7 @@
  * REST API endpoints for research workflows, hypothesis management, and reports
  */
 
+import crypto from 'node:crypto';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
@@ -395,14 +396,23 @@ async function executeResearchWorkflowAsync(
   job.status = 'running';
 
   try {
+    // Build the thesis object from engagement data
+    const thesis = {
+      summary: engagement.thesis?.statement ?? '',
+      key_value_drivers: [],
+      key_risks: [],
+    };
+
     const result = await executeResearchWorkflow({
-      engagement_id: engagement.id,
-      thesis_statement: engagement.thesis?.statement ?? '',
-      target_company: engagement.target.name,
-      sector: engagement.target.sector,
-      deal_type: engagement.deal_type,
-      focus_areas: config.focus_areas ?? [],
-      depth: config.depth,
+      engagement: engagement as import('../../models/index.js').Engagement,
+      thesis,
+      config: {
+        enableComparablesSearch: config.include_comparables,
+        enableContradictionAnalysis: true,
+        contradictionIntensity: config.depth === 'deep' ? 'aggressive' : config.depth === 'quick' ? 'light' : 'moderate',
+        maxEvidencePerHypothesis: config.max_sources,
+        parallelAgents: true,
+      },
     });
 
     job.status = 'completed';

@@ -5,6 +5,9 @@
  * for Private Equity Investment Analysis
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { startServer, stopServer, type APIConfig } from './api/index.js';
 import { initializeMemorySystems } from './memory/index.js';
 

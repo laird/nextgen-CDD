@@ -160,19 +160,36 @@ export const EngagementSchema = z.object({
 export type Engagement = z.infer<typeof EngagementSchema>;
 
 /**
+ * Simplified target schema for API requests (more flexible than internal TargetCompanySchema)
+ */
+export const TargetInputSchema = z.object({
+  name: z.string(),
+  sector: z.string(),
+  location: z.string().optional(),
+  description: z.string().optional(),
+  website: z.string().url().optional(),
+});
+
+/**
  * Request to create a new engagement
+ * Accepts both 'target' and 'target_company' for frontend compatibility
  */
 export const CreateEngagementRequestSchema = z.object({
   name: z.string().min(1),
-  client_name: z.string(),
-  deal_type: DealTypeSchema,
-  target_company: TargetCompanySchema,
+  client_name: z.string().optional(),
+  deal_type: z.union([DealTypeSchema, z.enum(['buyout', 'growth', 'venture', 'bolt-on'])]),
+  // Accept both 'target' (TUI) and 'target_company' (internal)
+  target_company: TargetInputSchema.optional(),
+  target: TargetInputSchema.optional(),
   investment_thesis: InvestmentThesisSchema.optional(),
   config: EngagementConfigSchema.optional(),
   retention_policy: RetentionPolicySchema.optional(),
   tags: z.array(z.string()).optional(),
   notes: z.string().optional(),
-});
+}).refine(
+  (data) => data.target_company || data.target,
+  { message: 'Either target_company or target is required' }
+);
 export type CreateEngagementRequest = z.infer<typeof CreateEngagementRequestSchema>;
 
 /**
@@ -233,6 +250,52 @@ export const defaultRetentionPolicy: RetentionPolicy = {
 };
 
 /**
+ * Map sector string to valid SectorSchema value
+ */
+function normalizeSector(sector: string): Sector {
+  const sectorMap: Record<string, Sector> = {
+    'industrial': 'industrials',
+    'finance': 'financial_services',
+    'fintech': 'financial_services',
+    'tech': 'technology',
+    'health': 'healthcare',
+    'media_entertainment': 'media',
+  };
+  const normalized = sector.toLowerCase();
+  if (sectorMap[normalized]) {
+    return sectorMap[normalized];
+  }
+  // Check if it's already a valid sector
+  const validSectors: Sector[] = [
+    'technology', 'healthcare', 'industrials', 'consumer', 'financial_services',
+    'energy', 'real_estate', 'media', 'telecommunications', 'materials', 'utilities', 'other'
+  ];
+  if (validSectors.includes(normalized as Sector)) {
+    return normalized as Sector;
+  }
+  return 'other';
+}
+
+/**
+ * Map deal type string to valid DealTypeSchema value
+ */
+function normalizeDealType(dealType: string): DealType {
+  const dealTypeMap: Record<string, DealType> = {
+    'buyout': 'buyout',
+    'growth': 'growth_equity',
+    'venture': 'growth_equity',
+    'bolt-on': 'add_on',
+    'platform': 'platform',
+    'add_on': 'add_on',
+    'growth_equity': 'growth_equity',
+    'carve_out': 'carve_out',
+    'recapitalization': 'recapitalization',
+  };
+  const normalized = dealType.toLowerCase();
+  return dealTypeMap[normalized] ?? 'buyout';
+}
+
+/**
  * Helper function to create a new engagement
  */
 export function createEngagement(
@@ -242,13 +305,28 @@ export function createEngagement(
   const id = randomUUID();
   const now = Date.now();
 
+  // Handle target vs target_company alias
+  const targetInput = request.target_company ?? request.target;
+  if (!targetInput) {
+    throw new Error('Either target_company or target is required');
+  }
+
+  // Normalize target company data
+  const target_company: TargetCompany = {
+    name: targetInput.name,
+    sector: normalizeSector(targetInput.sector),
+    headquarters: targetInput.location,
+    description: targetInput.description,
+    website: targetInput.website,
+  };
+
   return {
     id,
     name: request.name,
-    client_name: request.client_name,
-    deal_type: request.deal_type,
+    client_name: request.client_name ?? 'Unknown Client',
+    deal_type: normalizeDealType(request.deal_type),
     status: 'draft',
-    target_company: request.target_company,
+    target_company,
     investment_thesis: request.investment_thesis,
     team: [],
     config: request.config ?? defaultEngagementConfig,

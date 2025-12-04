@@ -11,11 +11,9 @@ import {
   UpdateEngagementRequestSchema,
   createEngagement,
   type Engagement,
-  type EngagementSummary,
 } from '../../models/index.js';
 import {
   authHook,
-  requireRole,
   requireEngagementAccess,
   initializeEngagementAccess,
   getUserEngagements,
@@ -75,7 +73,10 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
       await createDealMemory(engagement.id);
 
       reply.status(201).send({
-        engagement,
+        engagement: {
+          ...engagement,
+          target: engagement.target_company,
+        },
         message: 'Engagement created successfully',
       });
     }
@@ -99,12 +100,14 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
     },
     async (
       request: FastifyRequest<{
-        Querystring: { status?: string; sector?: string; limit: number; offset: number };
+        Querystring: { status?: string; sector?: string; limit?: number; offset?: number };
       }>,
       reply: FastifyReply
     ) => {
       const user = (request as AuthenticatedRequest).user;
-      const { status, sector, limit, offset } = request.query;
+      const { status, sector } = request.query;
+      const limit = request.query.limit ?? 20;
+      const offset = request.query.offset ?? 0;
 
       // Get engagements user has access to
       let engagementIds: string[];
@@ -126,7 +129,7 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
         engagements = engagements.filter((e) => e.status === status);
       }
       if (sector) {
-        engagements = engagements.filter((e) => e.target.sector === sector);
+        engagements = engagements.filter((e) => e.target_company.sector === sector);
       }
 
       // Sort by updated_at descending
@@ -136,22 +139,15 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
       const total = engagements.length;
       const paginated = engagements.slice(offset, offset + limit);
 
-      // Map to summaries
-      const summaries: EngagementSummary[] = paginated.map((e) => ({
-        id: e.id,
-        name: e.name,
-        status: e.status,
-        deal_type: e.deal_type,
-        target_name: e.target.name,
-        sector: e.target.sector,
-        hypothesis_count: 0, // Would be populated from deal memory
-        evidence_count: 0,
-        created_at: e.created_at,
-        updated_at: e.updated_at,
+      // Return full engagements with target field alias for frontend compatibility
+      const mappedEngagements = paginated.map((e) => ({
+        ...e,
+        // Add target alias for frontend compatibility (frontend expects target, backend uses target_company)
+        target: e.target_company,
       }));
 
       reply.send({
-        engagements: summaries,
+        engagements: mappedEngagements,
         total,
         limit,
         offset,
