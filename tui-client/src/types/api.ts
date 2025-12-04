@@ -53,20 +53,69 @@ export interface UpdateEngagementRequest {
 export interface ResearchJob {
   id: string;
   engagement_id: string;
-  type: 'research' | 'stress_test';
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  progress: number;
-  started_at: number;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'partial';
+  started_at?: number;
   completed_at?: number;
-  error?: string;
-  result?: unknown;
+  error_message?: string;
+  confidence_score?: number;
+  results?: ResearchResults;
+  config: ResearchConfig;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface ResearchConfig {
-  depth: 'quick' | 'standard' | 'deep';
-  focus_areas?: string[];
-  include_comparables?: boolean;
-  max_sources?: number;
+  maxHypotheses?: number;
+  enableDeepDive?: boolean;
+  confidenceThreshold?: number;
+  searchDepth?: 'quick' | 'standard' | 'thorough';
+}
+
+export interface ResearchResults {
+  verdict: 'proceed' | 'review' | 'reject';
+  summary: string;
+  key_findings: string[];
+  risks: string[];
+  opportunities: string[];
+  recommendations: string[];
+}
+
+export interface StartResearchRequest {
+  thesis: string;
+  config?: Partial<ResearchConfig>;
+}
+
+export interface Hypothesis {
+  id: string;
+  job_id: string;
+  statement: string;
+  testable: boolean;
+  priority: number;
+  validation_status: 'pending' | 'validated' | 'rejected' | 'inconclusive';
+  evidence_summary?: string;
+  created_at: number;
+}
+
+export interface EvidenceItem {
+  id: string;
+  engagement_id: string;
+  job_id: string;
+  type: 'supporting' | 'contradicting' | 'neutral';
+  hypothesis: string;
+  content: string;
+  source_url?: string;
+  source_type?: string;
+  confidence: number;
+  created_at: number;
+}
+
+export interface ProgressEvent {
+  type: 'status_update' | 'phase_start' | 'phase_complete' | 'hypothesis_generated' |
+        'evidence_found' | 'contradiction_detected' | 'round_complete' | 'job_complete' |
+        'completed' | 'error';
+  jobId: string;
+  timestamp: number;
+  data: Record<string, unknown>;
 }
 
 export interface HealthStatus {

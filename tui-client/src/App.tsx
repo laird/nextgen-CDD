@@ -3,6 +3,7 @@ import { Box, Text, useApp, useInput } from 'ink';
 import { Header } from './components/Header.js';
 import { Footer } from './components/Footer.js';
 import { EngagementsTab } from './components/tabs/EngagementsTab.js';
+import { ResearchTab } from './components/tabs/ResearchTab.js';
 import { useHealthCheck } from './hooks/useAPI.js';
 
 interface AppProps {
@@ -41,7 +42,7 @@ export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
       case 0:
         return '↑↓: Navigate  Enter: Details  N: New  E: Edit  D: Delete';
       case 1:
-        return 'R: New Research  S: Stress Test  Enter: View Results';
+        return '↑↓: Navigate  Enter: Select  S: Edit Thesis  R: Run  B: Back  ESC: Cancel';
       case 2:
         return 'F: Filter  /: Search  Enter: Details  C: Clear';
       case 3:
@@ -75,7 +76,7 @@ export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
       {/* Content Area */}
       <Box flexGrow={1} paddingX={1} paddingY={1}>
         {activeTab === 0 && <EngagementsTab serverUrl={serverUrl} authToken={authToken} />}
-        {activeTab === 1 && <Text>Research Tab - Press 1-5 to switch tabs</Text>}
+        {activeTab === 1 && <ResearchTab serverUrl={serverUrl} authToken={authToken} />}
         {activeTab === 2 && <Text>Evidence Tab - Press 1-5 to switch tabs</Text>}
         {activeTab === 3 && <Text>Hypothesis Tab - Press 1-5 to switch tabs</Text>}
         {activeTab === 4 && <Text>Monitor Tab - Press 1-5 to switch tabs</Text>}

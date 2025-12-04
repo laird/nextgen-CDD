@@ -113,24 +113,33 @@ export class ThesisValidatorClient {
   /**
    * Start research workflow
    */
-  async startResearch(engagementId: string, config: ResearchConfig): Promise<ResearchJob> {
-    const response = await this.http.post<{ job_id: string; status_url: string }>(
-      `/api/v1/research/${engagementId}/research`,
-      config
+  async startResearch(engagementId: string, thesis: string, config?: Partial<ResearchConfig>): Promise<{ job_id: string; status: string }> {
+    const response = await this.http.post<{ job_id: string; status: string }>(
+      `/api/v1/engagements/${engagementId}/research`,
+      { thesis, config }
     );
-
-    // Poll for job status
-    const jobId = response.data.job_id;
-    return this.getResearchJob(jobId);
+    return response.data;
   }
 
   /**
    * Get research job status
    */
-  async getResearchJob(jobId: string): Promise<ResearchJob> {
+  async getResearchJob(engagementId: string, jobId: string): Promise<ResearchJob> {
     const response = await this.http.get<ResearchJob>(
-      `/api/v1/research/jobs/${jobId}`
+      `/api/v1/engagements/${engagementId}/research/${jobId}`
     );
     return response.data;
+  }
+
+  /**
+   * Get WebSocket URL for research progress
+   */
+  getResearchProgressWsUrl(jobId: string, token?: string): string {
+    const wsBaseUrl = this.baseURL.replace(/^http/, 'ws');
+    const url = `${wsBaseUrl}/research/jobs/${jobId}/progress`;
+    if (token) {
+      return `${url}?token=${token}`;
+    }
+    return url;
   }
 }
