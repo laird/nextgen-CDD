@@ -1,5 +1,5 @@
 /**
- * Embedding Tool - Vector embedding generation using OpenAI
+ * Embedding Tool - Vector embedding generation using OpenAI or Vertex AI
  *
  * Provides text-to-vector conversion for semantic search and similarity.
  * Supports batch processing and caching for efficiency.
@@ -7,30 +7,68 @@
 
 import OpenAI from 'openai';
 import { createHash } from 'crypto';
+import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
+import type { google } from '@google-cloud/aiplatform/build/protos/protos.js';
+
+type IValue = google.protobuf.IValue;
+
+/**
+ * Embedding provider type
+ */
+export type EmbeddingProvider = 'openai' | 'vertex-ai';
+
+/**
+ * Vertex AI task types for embeddings
+ */
+export type VertexTaskType =
+  | 'RETRIEVAL_QUERY'
+  | 'RETRIEVAL_DOCUMENT'
+  | 'SEMANTIC_SIMILARITY'
+  | 'CLASSIFICATION'
+  | 'CLUSTERING'
+  | 'QUESTION_ANSWERING'
+  | 'FACT_VERIFICATION';
 
 /**
  * Embedding configuration
  */
 export interface EmbeddingConfig {
+  provider: EmbeddingProvider;
   model: string;
   dimensions: number;
   maxTokens: number;
   batchSize: number;
   cacheEnabled: boolean;
   cacheTtlMs: number;
+  // Vertex AI specific
+  projectId: string;
+  region: string;
+  taskType: VertexTaskType;
 }
 
 /**
- * Default embedding configuration
+ * Get default embedding configuration from environment
  */
-const defaultConfig: EmbeddingConfig = {
-  model: process.env['EMBEDDING_MODEL'] ?? 'text-embedding-3-large',
-  dimensions: parseInt(process.env['EMBEDDING_DIMENSIONS'] ?? '3072', 10),
-  maxTokens: 8191,
-  batchSize: 100,
-  cacheEnabled: true,
-  cacheTtlMs: 60 * 60 * 1000, // 1 hour
-};
+function getDefaultConfig(): EmbeddingConfig {
+  const projectId = process.env['GOOGLE_CLOUD_PROJECT'];
+  if (!projectId && (process.env['EMBEDDING_PROVIDER'] ?? 'vertex-ai') === 'vertex-ai') {
+    console.warn('[EmbeddingService] GOOGLE_CLOUD_PROJECT not set, Vertex AI embeddings may fail');
+  }
+
+  return {
+    provider: (process.env['EMBEDDING_PROVIDER'] as EmbeddingProvider) ?? 'vertex-ai',
+    model: process.env['EMBEDDING_MODEL'] ?? 'text-embedding-005',
+    dimensions: parseInt(process.env['EMBEDDING_DIMENSIONS'] ?? '768', 10),
+    maxTokens: 3072,
+    batchSize: 5, // Vertex AI has a limit of 5 texts per request
+    cacheEnabled: true,
+    cacheTtlMs: 60 * 60 * 1000, // 1 hour
+    // Vertex AI specific
+    projectId: projectId ?? '',
+    region: process.env['EMBEDDING_REGION'] ?? 'us-central1',
+    taskType: (process.env['EMBEDDING_TASK_TYPE'] as VertexTaskType) ?? 'RETRIEVAL_DOCUMENT',
+  };
+}
 
 /**
  * Cache entry for embeddings
@@ -52,10 +90,11 @@ export interface EmbeddingStats {
 }
 
 /**
- * Embedding Service
+ * Embedding Service - supports both OpenAI and Vertex AI
  */
 export class EmbeddingService {
-  private client: OpenAI;
+  private openaiClient: OpenAI | null = null;
+  private vertexClient: PredictionServiceClient | null = null;
   private config: EmbeddingConfig;
   private cache: Map<string, CacheEntry> = new Map();
   private stats: EmbeddingStats = {
@@ -68,10 +107,29 @@ export class EmbeddingService {
   private totalLatency = 0;
 
   constructor(config?: Partial<EmbeddingConfig>) {
+    const defaultConfig = getDefaultConfig();
     this.config = { ...defaultConfig, ...config };
-    this.client = new OpenAI({
-      apiKey: process.env['OPENAI_API_KEY'],
-    });
+    this.initializeClient();
+  }
+
+  /**
+   * Initialize the appropriate client based on provider
+   */
+  private initializeClient(): void {
+    if (this.config.provider === 'openai') {
+      this.openaiClient = new OpenAI({
+        apiKey: process.env['OPENAI_API_KEY'],
+      });
+      console.log('[EmbeddingService] Initialized OpenAI client');
+    } else {
+      const apiEndpoint = `${this.config.region}-aiplatform.googleapis.com`;
+      this.vertexClient = new PredictionServiceClient({
+        apiEndpoint,
+      });
+      console.log(
+        `[EmbeddingService] Initialized Vertex AI client for project: ${this.config.projectId}, region: ${this.config.region}`
+      );
+    }
   }
 
   /**
@@ -118,21 +176,18 @@ export class EmbeddingService {
     }
 
     const startTime = Date.now();
+    let embedding: Float32Array;
 
     try {
-      const response = await this.client.embeddings.create({
-        model: this.config.model,
-        input: text,
-        dimensions: this.config.dimensions,
-      });
+      if (this.config.provider === 'openai') {
+        embedding = await this.embedWithOpenAI(text);
+      } else {
+        embedding = await this.embedWithVertexAI(text);
+      }
 
-      const embedding = new Float32Array(response.data[0]!.embedding);
       const latency = Date.now() - startTime;
-
-      // Update stats
       this.totalLatency += latency;
       this.stats.averageLatencyMs = this.totalLatency / this.stats.totalRequests;
-      this.stats.totalTokensUsed += response.usage?.total_tokens ?? 0;
 
       // Cache result
       if (this.config.cacheEnabled) {
@@ -153,6 +208,74 @@ export class EmbeddingService {
       console.error('[EmbeddingService] Error embedding text:', error);
       throw error;
     }
+  }
+
+  /**
+   * Embed text using OpenAI
+   */
+  private async embedWithOpenAI(text: string): Promise<Float32Array> {
+    if (!this.openaiClient) {
+      throw new Error('OpenAI client not initialized');
+    }
+
+    const response = await this.openaiClient.embeddings.create({
+      model: this.config.model,
+      input: text,
+      dimensions: this.config.dimensions,
+    });
+
+    this.stats.totalTokensUsed += response.usage?.total_tokens ?? 0;
+    return new Float32Array(response.data[0]!.embedding);
+  }
+
+  /**
+   * Embed text using Vertex AI
+   */
+  private async embedWithVertexAI(text: string): Promise<Float32Array> {
+    if (!this.vertexClient) {
+      throw new Error('Vertex AI client not initialized');
+    }
+
+    const endpoint = `projects/${this.config.projectId}/locations/${this.config.region}/publishers/google/models/${this.config.model}`;
+
+    const instance = helpers.toValue({
+      content: text,
+      task_type: this.config.taskType,
+    });
+
+    const parameters = helpers.toValue(
+      this.config.dimensions ? { outputDimensionality: this.config.dimensions } : {}
+    );
+
+    const request = {
+      endpoint,
+      instances: [instance as IValue],
+      parameters: parameters as IValue,
+    };
+
+    const response = await this.vertexClient.predict(request);
+    const predictions = response[0]?.predictions;
+
+    if (!predictions || predictions.length === 0) {
+      throw new Error('No predictions returned from Vertex AI');
+    }
+
+    // Extract embedding from response
+    const prediction = predictions[0];
+    if (!prediction) {
+      throw new Error('No prediction returned from Vertex AI');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const embeddingValues = helpers.fromValue(prediction as any);
+
+    // The response structure has embeddings.values containing the vector
+    const values = (embeddingValues as { embeddings?: { values?: number[] } })?.embeddings?.values;
+    if (!values || !Array.isArray(values)) {
+      throw new Error('Invalid embedding response structure from Vertex AI');
+    }
+
+    return new Float32Array(values);
   }
 
   /**
@@ -222,19 +345,18 @@ export class EmbeddingService {
       const startTime = Date.now();
 
       try {
-        const response = await this.client.embeddings.create({
-          model: this.config.model,
-          input: batch,
-          dimensions: this.config.dimensions,
-        });
+        let batchEmbeddings: Float32Array[];
+
+        if (this.config.provider === 'openai') {
+          batchEmbeddings = await this.embedBatchWithOpenAI(batch);
+        } else {
+          batchEmbeddings = await this.embedBatchWithVertexAI(batch);
+        }
 
         const latency = Date.now() - startTime;
         this.totalLatency += latency;
-        this.stats.totalTokensUsed += response.usage?.total_tokens ?? 0;
 
-        for (const data of response.data) {
-          results.push(new Float32Array(data.embedding));
-        }
+        results.push(...batchEmbeddings);
       } catch (error) {
         console.error('[EmbeddingService] Error in batch embedding:', error);
         throw error;
@@ -242,6 +364,73 @@ export class EmbeddingService {
     }
 
     return results;
+  }
+
+  /**
+   * Batch embed using OpenAI
+   */
+  private async embedBatchWithOpenAI(texts: string[]): Promise<Float32Array[]> {
+    if (!this.openaiClient) {
+      throw new Error('OpenAI client not initialized');
+    }
+
+    const response = await this.openaiClient.embeddings.create({
+      model: this.config.model,
+      input: texts,
+      dimensions: this.config.dimensions,
+    });
+
+    this.stats.totalTokensUsed += response.usage?.total_tokens ?? 0;
+
+    return response.data.map((d) => new Float32Array(d.embedding));
+  }
+
+  /**
+   * Batch embed using Vertex AI
+   */
+  private async embedBatchWithVertexAI(texts: string[]): Promise<Float32Array[]> {
+    if (!this.vertexClient) {
+      throw new Error('Vertex AI client not initialized');
+    }
+
+    const endpoint = `projects/${this.config.projectId}/locations/${this.config.region}/publishers/google/models/${this.config.model}`;
+
+    const instances: IValue[] = texts.map((text) =>
+      helpers.toValue({
+        content: text,
+        task_type: this.config.taskType,
+      }) as IValue
+    );
+
+    const parameters = helpers.toValue(
+      this.config.dimensions ? { outputDimensionality: this.config.dimensions } : {}
+    ) as IValue;
+
+    const request = {
+      endpoint,
+      instances,
+      parameters,
+    };
+
+    const response = await this.vertexClient.predict(request);
+    const predictions = response[0]?.predictions;
+
+    if (!predictions || predictions.length === 0) {
+      throw new Error('No predictions returned from Vertex AI');
+    }
+
+    return predictions.map((prediction) => {
+      if (!prediction) {
+        throw new Error('Empty prediction in Vertex AI response');
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const embeddingValues = helpers.fromValue(prediction as any);
+      const values = (embeddingValues as { embeddings?: { values?: number[] } })?.embeddings?.values;
+      if (!values || !Array.isArray(values)) {
+        throw new Error('Invalid embedding response structure from Vertex AI');
+      }
+      return new Float32Array(values);
+    });
   }
 
   /**
@@ -276,18 +465,15 @@ export class EmbeddingService {
       score: this.cosineSimilarity(query, candidate),
     }));
 
-    return scores
-      .sort((a, b) => b.score - a.score)
-      .slice(0, topK);
+    return scores.sort((a, b) => b.score - a.score).slice(0, topK);
   }
 
   /**
    * Get statistics
    */
   getStats(): EmbeddingStats {
-    this.stats.averageLatencyMs = this.stats.totalRequests > 0
-      ? this.totalLatency / this.stats.totalRequests
-      : 0;
+    this.stats.averageLatencyMs =
+      this.stats.totalRequests > 0 ? this.totalLatency / this.stats.totalRequests : 0;
     return { ...this.stats };
   }
 
@@ -303,6 +489,20 @@ export class EmbeddingService {
    */
   getCacheSize(): number {
     return this.cache.size;
+  }
+
+  /**
+   * Get current provider
+   */
+  getProvider(): EmbeddingProvider {
+    return this.config.provider;
+  }
+
+  /**
+   * Get current model
+   */
+  getModel(): string {
+    return this.config.model;
   }
 }
 

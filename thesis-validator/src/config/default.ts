@@ -39,11 +39,17 @@ export const defaultConfig = {
 
   // Embedding Configuration
   embedding: {
-    provider: 'openai' as const,
-    model: 'text-embedding-3-small',
-    dimensions: 1536,
-    batchSize: 100,
+    provider: (process.env['EMBEDDING_PROVIDER'] ?? 'vertex-ai') as 'openai' | 'vertex-ai',
+    // Vertex AI: text-embedding-005, text-multilingual-embedding-002, gemini-embedding-001
+    // OpenAI: text-embedding-3-small, text-embedding-3-large
+    model: process.env['EMBEDDING_MODEL'] ?? 'text-embedding-005',
+    // Vertex AI default: 768, OpenAI text-embedding-3-large: 3072
+    dimensions: parseInt(process.env['EMBEDDING_DIMENSIONS'] ?? '768', 10),
+    batchSize: 5, // Vertex AI limit is 5 texts per request
     cacheEnabled: true,
+    // Vertex AI specific
+    region: process.env['EMBEDDING_REGION'] ?? 'us-central1',
+    taskType: process.env['EMBEDDING_TASK_TYPE'] ?? 'RETRIEVAL_DOCUMENT',
   },
 
   // Ruvector Configuration
