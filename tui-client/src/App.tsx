@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
+import { Header } from './components/Header.js';
 
 interface AppProps {
   serverUrl: string;
@@ -7,6 +8,7 @@ interface AppProps {
 
 export function App({ serverUrl }: AppProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
+  const [isOnline, setIsOnline] = useState(true); // Will be dynamic later
   const { exit } = useApp();
 
   // Handle keyboard input
@@ -31,14 +33,7 @@ export function App({ serverUrl }: AppProps): React.ReactElement {
 
   return (
     <Box flexDirection="column" height="100%">
-      {/* Header */}
-      <Box borderStyle="single" borderColor="blue" paddingX={1}>
-        <Text bold>Thesis Validator TUI</Text>
-        <Text> | </Text>
-        <Text color="gray">Server: {serverUrl}</Text>
-        <Text> | </Text>
-        <Text color="green">✓ Online</Text>
-      </Box>
+      <Header serverUrl={serverUrl} isOnline={isOnline} />
 
       {/* Tab Bar */}
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
