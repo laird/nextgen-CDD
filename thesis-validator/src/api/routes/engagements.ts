@@ -24,7 +24,7 @@ import {
   getEngagementUsers,
   type AuthenticatedRequest,
 } from '../middleware/index.js';
-import { getDealMemory } from '../../memory/index.js';
+import { createDealMemory } from '../../memory/index.js';
 
 /**
  * In-memory engagement store (replace with database in production)
@@ -72,7 +72,7 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
       initializeEngagementAccess(engagement.id, user.id);
 
       // Initialize deal memory for this engagement
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
       await dealMemory.initialize(engagement.id);
 
       reply.status(201).send({

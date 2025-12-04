@@ -7,6 +7,12 @@
  * 3. Market Intelligence - Real-time market signals
  */
 
+import { getRuvectorClient } from './ruvector-client.js';
+import { getInstitutionalMemory } from './institutional-memory.js';
+import { getMarketIntelligence } from './market-intelligence.js';
+import { getReflexionStore } from './reflexion-store.js';
+import { getSkillLibrary } from './skill-library.js';
+
 // Ruvector client
 export {
   RuvectorClient,

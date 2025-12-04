@@ -35,6 +35,7 @@ export {
   getDocumentParser,
   setDocumentParser,
   parseDocument,
+  extractTextFromChunks,
   type ParsedDocument,
   type DocumentChunk,
   type DocumentMetadata,

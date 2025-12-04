@@ -161,3 +161,29 @@ export {
   type WebSocketMessage,
   type EventFilter,
 } from './events.js';
+
+// Research models
+export {
+  ResearchJobStatusSchema,
+  ResearchConfigSchema,
+  EvidenceTypeSchema,
+  EvidenceItemSchema,
+  ValidationStatusSchema,
+  HypothesisSchema,
+  ResearchResultsSchema,
+  ResearchJobSchema,
+  StartResearchRequestSchema,
+  ProgressEventTypeSchema,
+  ProgressEventSchema,
+  type ResearchJobStatus,
+  type ResearchConfig,
+  type EvidenceType,
+  type EvidenceItem,
+  type ValidationStatus,
+  type Hypothesis,
+  type ResearchResults,
+  type ResearchJob,
+  type StartResearchRequest,
+  type ProgressEventType,
+  type ProgressEvent,
+} from './research.js';

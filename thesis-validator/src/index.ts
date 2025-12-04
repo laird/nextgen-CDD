@@ -6,8 +6,7 @@
  */
 
 import { startServer, stopServer, type APIConfig } from './api/index.js';
-import { initializeMemorySystem } from './memory/index.js';
-import { initializeTools } from './tools/index.js';
+import { initializeMemorySystems } from './memory/index.js';
 
 /**
  * Application configuration
@@ -45,11 +44,7 @@ async function main(): Promise<void> {
 
   // Initialize memory system
   console.log('Initializing memory system...');
-  await initializeMemorySystem();
-
-  // Initialize tools
-  console.log('Initializing tools...');
-  await initializeTools();
+  await initializeMemorySystems();
 
   // Start API server
   console.log('Starting API server...');

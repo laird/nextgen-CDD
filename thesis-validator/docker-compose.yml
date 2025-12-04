@@ -29,6 +29,22 @@ services:
       retries: 5
 
   # ---------------------------------------------------------------------------
+  # Qdrant - Vector Database
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
   # PostgreSQL - Primary Database
   # ---------------------------------------------------------------------------
   postgres:
@@ -114,3 +130,4 @@ volumes:
   redis_data:
   postgres_data:
   ruvector_data:
+  qdrant_data:

@@ -78,9 +78,6 @@ export function publishEvent(event: EngagementEvent): void {
  * Register WebSocket routes for events
  */
 export async function registerEventWebSocket(fastify: FastifyInstance): Promise<void> {
-  // Register WebSocket plugin if not already registered
-  await fastify.register(import('@fastify/websocket'));
-
   /**
    * WebSocket endpoint for real-time events
    * WS /engagements/:engagementId/events

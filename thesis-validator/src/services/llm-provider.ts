@@ -10,7 +10,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import AnthropicVertex from '@anthropic-ai/vertex-sdk';
+import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import { getGoogleAuthService, type GoogleAuthService } from './google-auth.js';
 
 /**

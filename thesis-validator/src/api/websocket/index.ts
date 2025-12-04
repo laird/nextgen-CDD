@@ -15,3 +15,11 @@ export {
   registerExpertCallWebSocket,
   getActiveSessions,
 } from './expert-call.js';
+
+export {
+  registerResearchProgressWebSocket,
+  publishProgressEvent,
+  getProgressStats,
+  closeJobConnections,
+  closeProgressWebSocket,
+} from './research-progress.js';

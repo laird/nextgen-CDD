@@ -64,9 +64,6 @@ const SessionControlSchema = z.object({
  * Register WebSocket routes for expert calls
  */
 export async function registerExpertCallWebSocket(fastify: FastifyInstance): Promise<void> {
-  // Ensure WebSocket plugin is registered
-  await fastify.register(import('@fastify/websocket'));
-
   /**
    * WebSocket endpoint for expert call assistance
    * WS /engagements/:engagementId/expert-call

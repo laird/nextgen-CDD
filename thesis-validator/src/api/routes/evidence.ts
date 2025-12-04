@@ -12,7 +12,7 @@ import {
   type AuthenticatedRequest,
 } from '../middleware/index.js';
 import { getEngagement } from './engagements.js';
-import { getDealMemory } from '../../memory/index.js';
+import { createDealMemory } from '../../memory/index.js';
 import {
   CreateEvidenceRequestSchema,
   EvidenceBatchInsertRequestSchema,
@@ -95,7 +95,7 @@ export async function registerEvidenceRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
 
       // Search evidence
       let evidence = await dealMemory.searchEvidence(
@@ -157,7 +157,7 @@ export async function registerEvidenceRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
       const evidence = await dealMemory.searchEvidence(engagementId, '', 1000);
       const item = evidence.find((e) => e.id === evidenceId);
 
@@ -212,7 +212,7 @@ export async function registerEvidenceRoutes(fastify: FastifyInstance): Promise<
       const evidence = createEvidenceNode(evidenceRequest, user.id);
 
       // Store in deal memory
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
       await dealMemory.storeEvidence(engagementId, evidence);
 
       reply.status(201).send({
@@ -254,7 +254,7 @@ export async function registerEvidenceRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
       const created: EvidenceNode[] = [];
       const errors: { index: number; error: string }[] = [];
 
@@ -323,7 +323,7 @@ export async function registerEvidenceRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      const dealMemory = getDealMemory();
+      const dealMemory = createDealMemory();
       let contradictions = await dealMemory.searchContradictions(engagementId, '', 200);
 
       // Apply filters
@@ -624,7 +624,7 @@ async function processDocumentAsync(
     document.status = 'ready';
 
     // Store chunks in deal memory
-    const dealMemory = getDealMemory();
+    const dealMemory = createDealMemory();
     await dealMemory.storeDocument(document.engagementId, {
       id: document.id,
       filename: document.filename,

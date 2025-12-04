@@ -452,3 +452,10 @@ export async function parseDocument(
 ): Promise<ParsedDocument> {
   return getDocumentParser().parseFile(filePath, options);
 }
+
+/**
+ * Extract text from document chunks
+ */
+export function extractTextFromChunks(chunks: DocumentChunk[]): string {
+  return chunks.map((chunk) => chunk.content).join('\n\n');
+}

@@ -490,6 +490,146 @@ Output as JSON:
   }
 
   /**
+   * Execute adaptive research workflow
+   */
+  async executeResearchWorkflow(input: {
+    thesis: string;
+    config: {
+      maxHypotheses?: number;
+      enableDeepDive?: boolean;
+      confidenceThreshold?: number;
+    };
+  }): Promise<{
+    hypotheses: Array<{ statement: string; priority: number }>;
+    evidence: Array<{ type: string; content: string; confidence: number }>;
+    contradictions: string[];
+    confidence: number;
+    needsDeepDive: boolean;
+  }> {
+    // Phase 1: Core analysis
+    const phase1Result = await this.executePhase1(input.thesis, input.config.maxHypotheses ?? 5);
+
+    // Evaluate if deep dive needed
+    const needsDeepDive =
+      input.config.enableDeepDive !== false &&
+      (phase1Result.confidence < (input.config.confidenceThreshold ?? 70) ||
+       phase1Result.contradictions.length > 3);
+
+    if (needsDeepDive) {
+      // Phase 2: Deep dive with additional agents
+      const phase2Result = await this.executePhase2(phase1Result);
+      return { ...phase2Result, needsDeepDive: true };
+    }
+
+    return { ...phase1Result, needsDeepDive: false };
+  }
+
+  /**
+   * Execute Phase 1: Core analysis
+   */
+  private async executePhase1(
+    thesis: string,
+    maxHypotheses: number
+  ): Promise<{
+    hypotheses: Array<{ statement: string; priority: number }>;
+    evidence: Array<{ type: string; content: string; confidence: number }>;
+    contradictions: string[];
+    confidence: number;
+  }> {
+    // Step 1: Generate hypotheses
+    const hypotheses = await this.generateHypotheses(thesis, maxHypotheses);
+
+    // Step 2: Gather evidence
+    const evidence = await this.gatherEvidence(hypotheses);
+
+    // Step 3: Hunt contradictions
+    const contradictions = await this.huntContradictions(evidence);
+
+    // Calculate confidence
+    const supportingRatio = evidence.filter(e => e.type === 'supporting').length / evidence.length;
+    const confidence = supportingRatio * 100 * (1 - contradictions.length * 0.1);
+
+    return {
+      hypotheses,
+      evidence,
+      contradictions,
+      confidence: Math.max(0, Math.min(100, confidence)),
+    };
+  }
+
+  /**
+   * Execute Phase 2: Deep dive
+   */
+  private async executePhase2(phase1Result: {
+    hypotheses: Array<{ statement: string; priority: number }>;
+    evidence: Array<{ type: string; content: string; confidence: number }>;
+    contradictions: string[];
+    confidence: number;
+  }): Promise<{
+    hypotheses: Array<{ statement: string; priority: number }>;
+    evidence: Array<{ type: string; content: string; confidence: number }>;
+    contradictions: string[];
+    confidence: number;
+  }> {
+    // TODO: Implement comparables finder and expert synthesizer
+    // For now, just return phase 1 results with slight confidence boost
+    return {
+      ...phase1Result,
+      confidence: Math.min(100, phase1Result.confidence + 10),
+    };
+  }
+
+  /**
+   * Generate hypotheses from thesis
+   */
+  private async generateHypotheses(
+    thesis: string,
+    maxCount: number
+  ): Promise<Array<{ statement: string; priority: number }>> {
+    // TODO: Call HypothesisBuilder agent
+    // For now, return mock hypotheses
+    return [
+      { statement: `Market assumption: ${thesis}`, priority: 5 },
+      { statement: 'Financial viability needs validation', priority: 4 },
+      { statement: 'Competitive positioning unclear', priority: 3 },
+    ].slice(0, maxCount);
+  }
+
+  /**
+   * Gather evidence for hypotheses
+   */
+  private async gatherEvidence(
+    hypotheses: Array<{ statement: string; priority: number }>
+  ): Promise<Array<{ type: string; content: string; confidence: number }>> {
+    // TODO: Call EvidenceGatherer agent
+    // For now, return mock evidence
+    return hypotheses.flatMap((h) => [
+      {
+        type: 'supporting',
+        content: `Evidence supports: ${h.statement}`,
+        confidence: 0.7,
+      },
+      {
+        type: 'contradicting',
+        content: `Counter-evidence for: ${h.statement}`,
+        confidence: 0.5,
+      },
+    ]);
+  }
+
+  /**
+   * Hunt contradictions in evidence
+   */
+  private async huntContradictions(
+    evidence: Array<{ type: string; content: string; confidence: number }>
+  ): Promise<string[]> {
+    // TODO: Call ContradictionHunter agent
+    // For now, return mock contradictions
+    const contradictingEvidence = evidence.filter(e => e.type === 'contradicting');
+    return contradictingEvidence.map(e => `Contradiction found: ${e.content}`);
+  }
+
+  /**
    * Abort current workflow
    */
   abort(): void {

@@ -10,7 +10,7 @@ export {
 
 export {
   registerResearchRoutes,
-} from './research.js';
+} from './research-bullmq.js';
 
 export {
   registerEvidenceRoutes,
