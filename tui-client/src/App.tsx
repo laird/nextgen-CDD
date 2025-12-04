@@ -5,19 +5,24 @@ import { Footer } from './components/Footer.js';
 import { EngagementsTab } from './components/tabs/EngagementsTab.js';
 import { ResearchTab } from './components/tabs/ResearchTab.js';
 import { useHealthCheck } from './hooks/useAPI.js';
+import { InputProvider, useInputContext } from './context/InputContext.js';
 
 interface AppProps {
   serverUrl: string;
   authToken?: string | undefined;
 }
 
-export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
+function AppContent({ serverUrl, authToken }: AppProps): React.ReactElement {
   const [activeTab, setActiveTab] = useState(0);
   const { isOnline } = useHealthCheck(serverUrl);
   const { exit } = useApp();
+  const { isInputActive } = useInputContext();
 
-  // Handle keyboard input
+  // Handle keyboard input - disabled when input is active
   useInput((input, key) => {
+    // Skip global hotkeys when text input is active
+    if (isInputActive) return;
+
     // Tab switching
     if (input === '1') setActiveTab(0);
     if (input === '2') setActiveTab(1);
@@ -84,5 +89,13 @@ export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
 
       <Footer helpText={getHelpText()} />
     </Box>
+  );
+}
+
+export function App({ serverUrl, authToken }: AppProps): React.ReactElement {
+  return (
+    <InputProvider>
+      <AppContent serverUrl={serverUrl} authToken={authToken} />
+    </InputProvider>
   );
 }

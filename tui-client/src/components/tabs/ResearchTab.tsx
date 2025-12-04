@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import WebSocket from 'ws';
@@ -7,7 +7,7 @@ import type { Engagement, ResearchJob, ProgressEvent, ResearchConfig } from '../
 
 interface ResearchTabProps {
   serverUrl: string;
-  authToken?: string;
+  authToken?: string | undefined;
 }
 
 type View = 'select_engagement' | 'input_thesis' | 'running' | 'results';
@@ -85,7 +85,7 @@ export function ResearchTab({ serverUrl, authToken }: ResearchTabProps): React.R
         }
       });
 
-      websocket.on('error', (err: Error) => {
+      websocket.on('error', (_err: Error) => {
         // WebSocket error occurred
         setError('WebSocket connection error');
       });
@@ -265,8 +265,8 @@ export function ResearchTab({ serverUrl, authToken }: ResearchTabProps): React.R
           <Box flexDirection="column">
             <Text bold color="green">Latest Update:</Text>
             <Text>Type: {latestEvent.type}</Text>
-            <Text>Message: {latestEvent.data.message as string || 'Processing...'}</Text>
-            {latestEvent.data.progress && (
+            <Text>Message: {String(latestEvent.data.message ?? 'Processing...')}</Text>
+            {typeof latestEvent.data.progress === 'number' && (
               <Text>Progress: {latestEvent.data.progress}%</Text>
             )}
           </Box>
@@ -274,10 +274,10 @@ export function ResearchTab({ serverUrl, authToken }: ResearchTabProps): React.R
 
         <Text>{''}</Text>
         <Text bold color="cyan">Progress Events:</Text>
-        <Box flexDirection="column" maxHeight={10}>
+        <Box flexDirection="column">
           {progressEvents.slice(-10).reverse().map((event, idx) => (
             <Text key={idx} color="gray">
-              [{new Date(event.timestamp).toLocaleTimeString()}] {event.type}: {event.data.message as string || ''}
+              [{new Date(event.timestamp).toLocaleTimeString()}] {event.type}: {String(event.data.message ?? '')}
             </Text>
           ))}
         </Box>

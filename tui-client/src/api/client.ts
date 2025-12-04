@@ -6,6 +6,7 @@ import type {
   UpdateEngagementRequest,
   ResearchJob,
   ResearchConfig,
+  ResearchResults,
   HealthStatus,
   SystemMetrics,
   APIError,
@@ -112,23 +113,68 @@ export class ThesisValidatorClient {
 
   /**
    * Start research workflow
+   * Backend expects thesis to be already submitted via the /thesis endpoint,
+   * but we'll pass the thesis config along
    */
   async startResearch(engagementId: string, thesis: string, config?: Partial<ResearchConfig>): Promise<{ job_id: string; status: string }> {
-    const response = await this.http.post<{ job_id: string; status: string }>(
-      `/api/v1/engagements/${engagementId}/research`,
-      { thesis, config }
+    // First submit the thesis
+    await this.http.post(
+      `/api/v1/engagements/${engagementId}/thesis`,
+      { thesis_statement: thesis }
     );
-    return response.data;
+
+    // Then start research
+    const response = await this.http.post<{ job_id: string; message: string }>(
+      `/api/v1/engagements/${engagementId}/research`,
+      {
+        depth: config?.searchDepth ?? 'standard',
+        include_comparables: true,
+        max_sources: 20,
+      }
+    );
+    return { job_id: response.data.job_id, status: 'started' };
   }
 
   /**
    * Get research job status
    */
-  async getResearchJob(engagementId: string, jobId: string): Promise<ResearchJob> {
-    const response = await this.http.get<ResearchJob>(
-      `/api/v1/engagements/${engagementId}/research/${jobId}`
-    );
-    return response.data;
+  async getResearchJob(_engagementId: string, jobId: string): Promise<ResearchJob> {
+    // The backend returns job info at /api/v1/engagements/jobs/:jobId
+    const response = await this.http.get<{
+      job_id: string;
+      engagement_id: string;
+      type: string;
+      status: string;
+      progress: number;
+      started_at: number;
+      completed_at?: number;
+      error?: string;
+      result?: unknown;
+    }>(`/api/v1/engagements/jobs/${jobId}`);
+
+    const now = Date.now();
+    // Map to ResearchJob format
+    const job: ResearchJob = {
+      id: response.data.job_id,
+      engagement_id: response.data.engagement_id,
+      status: response.data.status as ResearchJob['status'],
+      config: {},
+      created_at: response.data.started_at ?? now,
+      updated_at: response.data.completed_at ?? now,
+    };
+
+    // Add optional fields only if they have values
+    if (response.data.started_at !== undefined) {
+      job.started_at = response.data.started_at;
+    }
+    if (response.data.completed_at !== undefined) {
+      job.completed_at = response.data.completed_at;
+    }
+    if (response.data.result !== undefined) {
+      job.results = response.data.result as ResearchResults;
+    }
+
+    return job;
   }
 
   /**

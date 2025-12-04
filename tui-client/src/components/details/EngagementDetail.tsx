@@ -5,7 +5,7 @@ import type { Engagement } from '../../types/api.js';
 interface EngagementDetailProps {
   engagement: Engagement;
   onBack: () => void;
-  onStartResearch?: () => void;
+  onStartResearch?: (() => void) | undefined;
 }
 
 function formatDate(timestamp: number): string {

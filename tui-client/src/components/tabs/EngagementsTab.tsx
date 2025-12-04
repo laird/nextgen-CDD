@@ -5,6 +5,7 @@ import { useEngagements } from '../../hooks/useAPI.js';
 import { ThesisValidatorClient } from '../../api/client.js';
 import { EngagementCreateForm } from '../forms/EngagementCreateForm.js';
 import { EngagementDetail } from '../details/EngagementDetail.js';
+import { EngagementResearch } from '../research/EngagementResearch.js';
 
 interface EngagementsTabProps {
   serverUrl: string;
@@ -52,7 +53,7 @@ function formatStatus(status: Engagement['status']): string {
   }
 }
 
-type ViewMode = 'list' | 'detail' | 'create';
+type ViewMode = 'list' | 'detail' | 'create' | 'research';
 
 export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): React.ReactElement {
   const { engagements, loading, error, refresh } = useEngagements(serverUrl, authToken);
@@ -93,6 +94,19 @@ export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): R
     setMessage('');
   };
 
+  const handleStartResearch = () => {
+    if (engagements[selectedIndex] && !engagements[selectedIndex]?.thesis) {
+      setViewMode('research');
+      setMessage('');
+    }
+  };
+
+  const handleResearchComplete = async () => {
+    setViewMode('list');
+    setMessage('Research completed! Refreshing engagements...');
+    await refresh();
+  };
+
   // Handle keyboard input
   useInput((input, key) => {
     if (loading || error || viewMode !== 'list') return;
@@ -125,6 +139,16 @@ export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): R
     if (key.return && engagements.length > 0) {
       setViewMode('detail');
       setMessage('');
+    }
+    // Start research directly from list
+    if ((input === 'r' || input === 'R') && engagements.length > 0) {
+      const selected = engagements[selectedIndex];
+      if (selected && !selected.thesis) {
+        setViewMode('research');
+        setMessage('');
+      } else if (selected?.thesis) {
+        setMessage('Research already completed for this engagement');
+      }
     }
   });
 
@@ -168,6 +192,20 @@ export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): R
       <EngagementDetail
         engagement={engagements[selectedIndex]}
         onBack={handleBackToList}
+        onStartResearch={!engagements[selectedIndex]?.thesis ? handleStartResearch : undefined}
+      />
+    );
+  }
+
+  // Show research view
+  if (viewMode === 'research' && engagements[selectedIndex]) {
+    return (
+      <EngagementResearch
+        engagement={engagements[selectedIndex]}
+        serverUrl={serverUrl}
+        authToken={authToken}
+        onBack={handleBackToList}
+        onComplete={handleResearchComplete}
       />
     );
   }
@@ -244,7 +282,7 @@ export function EngagementsTab({ serverUrl, authToken }: EngagementsTabProps): R
       {/* Action Hints */}
       <Box marginTop={2} borderStyle="round" borderColor="gray" paddingX={1}>
         <Text color="gray">
-          [N] New  [E] Edit  [D] Delete  [Enter] Details  [↑↓] Navigate
+          [N] New  [R] Research  [E] Edit  [D] Delete  [Enter] Details  [↑↓] Navigate
         </Text>
       </Box>
     </Box>

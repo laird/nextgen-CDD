@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import type { CreateEngagementRequest } from '../../types/api.js';
+import { useInputContext } from '../../context/InputContext.js';
 
 interface EngagementCreateFormProps {
   onSubmit: (data: CreateEngagementRequest) => void;
@@ -43,6 +44,16 @@ export function EngagementCreateForm({
   });
   const [sectorIndex, setSectorIndex] = useState(0);
   const [dealTypeIndex, setDealTypeIndex] = useState(0);
+  const { setInputActive } = useInputContext();
+
+  // Text input is active when currentField is 'name' or 'location' (text fields)
+  const isTextInputActive = currentField === 'name' || currentField === 'location';
+
+  // Sync text input state with global input state to disable app hotkeys
+  useEffect(() => {
+    setInputActive(isTextInputActive);
+    return () => setInputActive(false);
+  }, [isTextInputActive, setInputActive]);
 
   // Handle field navigation
   useInput((input, key) => {
