@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { Header } from './components/Header.js';
+import { Footer } from './components/Footer.js';
 
 interface AppProps {
   serverUrl: string;
@@ -31,6 +32,24 @@ export function App({ serverUrl }: AppProps): React.ReactElement {
     }
   });
 
+  // Tab-specific help text
+  const getHelpText = (): string => {
+    switch (activeTab) {
+      case 0:
+        return '↑↓: Navigate  Enter: Details  N: New  E: Edit  D: Delete';
+      case 1:
+        return 'R: New Research  S: Stress Test  Enter: View Results';
+      case 2:
+        return 'F: Filter  /: Search  Enter: Details  C: Clear';
+      case 3:
+        return 'Enter: Expand/Collapse  V: View Details  E: Evidence';
+      case 4:
+        return 'Auto-refresh: 5s';
+      default:
+        return '1-5: Switch Tabs  Q: Quit  ?: Help';
+    }
+  };
+
   return (
     <Box flexDirection="column" height="100%">
       <Header serverUrl={serverUrl} isOnline={isOnline} />
@@ -59,12 +78,7 @@ export function App({ serverUrl }: AppProps): React.ReactElement {
         {activeTab === 4 && <Text>Monitor Tab - Press 1-5 to switch tabs</Text>}
       </Box>
 
-      {/* Footer */}
-      <Box borderStyle="single" borderColor="gray" paddingX={1}>
-        <Text color="gray">
-          1-5: Switch Tabs  Q: Quit  ?: Help
-        </Text>
-      </Box>
+      <Footer helpText={getHelpText()} />
     </Box>
   );
 }
