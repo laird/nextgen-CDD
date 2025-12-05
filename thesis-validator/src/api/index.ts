@@ -12,6 +12,7 @@ import {
   registerResearchRoutes,
   registerEvidenceRoutes,
   registerSkillsRoutes,
+  registerHypothesesRoutes,
 } from './routes/index.js';
 import {
   registerEventWebSocket,
@@ -159,6 +160,13 @@ export async function createServer(config: Partial<APIConfig> = {}): Promise<Fas
       await registerSkillsRoutes(instance);
     },
     { prefix: '/api/v1/skills' }
+  );
+
+  await fastify.register(
+    async (instance) => {
+      await registerHypothesesRoutes(instance);
+    },
+    { prefix: '/api/v1/engagements' }
   );
 
   // Register WebSocket plugin (once for all WebSocket handlers)

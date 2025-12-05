@@ -21,3 +21,7 @@ export {
 export {
   registerSkillsRoutes,
 } from './skills.js';
+
+export {
+  registerHypothesesRoutes,
+} from './hypotheses.js';
