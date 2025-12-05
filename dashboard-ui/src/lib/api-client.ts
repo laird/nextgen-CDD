@@ -133,6 +133,43 @@ export class ThesisValidatorClient {
     const response = await this.client.get('/health');
     return response.data;
   }
+
+  // Hypotheses
+  async getHypothesisTree(engagementId: string): Promise<any> {
+    const response = await this.client.get(`/api/v1/engagements/${engagementId}/hypotheses`);
+    return response.data;
+  }
+
+  async getHypothesis(engagementId: string, hypothesisId: string): Promise<{ hypothesis: any }> {
+    const response = await this.client.get(
+      `/api/v1/engagements/${engagementId}/hypotheses/${hypothesisId}`
+    );
+    return response.data;
+  }
+
+  async createHypothesis(engagementId: string, data: any): Promise<{ hypothesis: any }> {
+    const response = await this.client.post(
+      `/api/v1/engagements/${engagementId}/hypotheses`,
+      data
+    );
+    return response.data;
+  }
+
+  async updateHypothesis(
+    engagementId: string,
+    hypothesisId: string,
+    data: any
+  ): Promise<{ hypothesis: any }> {
+    const response = await this.client.patch(
+      `/api/v1/engagements/${engagementId}/hypotheses/${hypothesisId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteHypothesis(engagementId: string, hypothesisId: string): Promise<void> {
+    await this.client.delete(`/api/v1/engagements/${engagementId}/hypotheses/${hypothesisId}`);
+  }
 }
 
 // Export a singleton instance

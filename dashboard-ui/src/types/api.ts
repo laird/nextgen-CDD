@@ -153,3 +153,49 @@ export interface APIError {
   message: string;
   details?: unknown;
 }
+
+export interface HypothesisNode {
+  id: string;
+  engagementId: string;
+  parentId: string | null;
+  type: 'thesis' | 'sub_thesis' | 'assumption';
+  content: string;
+  confidence: number;
+  status: 'untested' | 'supported' | 'challenged' | 'refuted';
+  importance: 'critical' | 'high' | 'medium' | 'low' | null;
+  testability: 'easy' | 'moderate' | 'difficult' | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HypothesisEdge {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  relationship: 'requires' | 'supports' | 'contradicts' | 'implies';
+  strength: number;
+  reasoning: string | null;
+}
+
+export interface HypothesisTree {
+  hypotheses: HypothesisNode[];
+  edges: HypothesisEdge[];
+  count: number;
+}
+
+export interface CreateHypothesisRequest {
+  type: 'thesis' | 'sub_thesis' | 'assumption';
+  content: string;
+  parent_id?: string;
+  confidence?: number;
+  importance?: 'critical' | 'high' | 'medium' | 'low';
+  testability?: 'easy' | 'moderate' | 'difficult';
+}
+
+export interface UpdateHypothesisRequest {
+  content?: string;
+  confidence?: number;
+  status?: 'untested' | 'supported' | 'challenged' | 'refuted';
+  importance?: 'critical' | 'high' | 'medium' | 'low';
+  testability?: 'easy' | 'moderate' | 'difficult';
+}
