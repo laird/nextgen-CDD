@@ -1,7 +1,7 @@
 /**
  * Side panel showing hypothesis details and linked evidence
  */
-import { X, ExternalLink, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { HypothesisNode } from '../../types/api';
 
 interface HypothesisDetailPanelProps {

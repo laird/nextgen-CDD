@@ -1,7 +1,7 @@
 /**
  * Interactive hypothesis tree visualization using reactflow
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -35,10 +35,7 @@ const edgeColors = {
 };
 
 export function HypothesisTreeViz({ tree, onNodeSelect }: HypothesisTreeProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
   const handleNodeSelect = useCallback((id: string) => {
-    setSelectedId(id);
     const hypothesis = tree.hypotheses.find(h => h.id === id);
     if (hypothesis) {
       onNodeSelect(hypothesis);
@@ -116,8 +113,8 @@ export function HypothesisTreeViz({ tree, onNodeSelect }: HypothesisTreeProps) {
     }));
   }, [tree.edges]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
 
   if (tree.hypotheses.length === 0) {
     return (
