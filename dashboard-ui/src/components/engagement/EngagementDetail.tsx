@@ -7,17 +7,27 @@ import { useEngagement } from '../../hooks/useEngagements';
 import { ThesisSubmitForm } from '../research/ThesisSubmitForm';
 import { ResearchProgress } from '../research/ResearchProgress';
 import { ResearchResults } from '../research/ResearchResults';
+import { HypothesisTreeViz, HypothesisDetailPanel } from '../hypothesis';
+import { useHypothesisTree, useUpdateHypothesis } from '../../hooks/useHypotheses';
+import type { HypothesisNode } from '../../types/api';
 
 interface EngagementDetailProps {
   engagementId: string;
 }
 
 type WorkflowStep = 'submit' | 'progress' | 'results';
+type TabType = 'research' | 'hypotheses';
 
 export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   const { data: engagement, isLoading, error } = useEngagement(engagementId);
+  const [activeTab, setActiveTab] = useState<TabType>('research');
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('submit');
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [selectedHypothesis, setSelectedHypothesis] = useState<HypothesisNode | null>(null);
+
+  // Hypothesis tree hooks
+  const { data: hypothesisTree, isLoading: isLoadingTree } = useHypothesisTree(engagementId);
+  const updateHypothesis = useUpdateHypothesis(engagementId);
 
   const handleResearchStart = (jobId: string) => {
     setCurrentJobId(jobId);
@@ -31,6 +41,15 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   const handleStartNew = () => {
     setCurrentJobId(null);
     setCurrentStep('submit');
+  };
+
+  const handleUpdateStatus = (_confidence: number, status: string) => {
+    if (selectedHypothesis) {
+      updateHypothesis.mutate({
+        hypothesisId: selectedHypothesis.id,
+        data: { status: status as any },
+      });
+    }
   };
 
   if (isLoading) {
@@ -115,9 +134,42 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
         </div>
       </div>
 
-      {/* Research Workflow */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto">
+      {/* Tab Navigation */}
+      <div className="border-b border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900">
+        <div className="flex gap-1 px-6">
+          <button
+            onClick={() => setActiveTab('research')}
+            className={`
+              px-4 py-3 text-sm font-medium border-b-2 transition-colors
+              ${
+                activeTab === 'research'
+                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              }
+            `}
+          >
+            Research Workflow
+          </button>
+          <button
+            onClick={() => setActiveTab('hypotheses')}
+            className={`
+              px-4 py-3 text-sm font-medium border-b-2 transition-colors
+              ${
+                activeTab === 'hypotheses'
+                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              }
+            `}
+          >
+            Hypotheses
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'research' && (
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
           {/* Step Indicator */}
           <div className="mb-6 flex items-center justify-center gap-4">
             <div
@@ -221,8 +273,44 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Hypotheses Tab */}
+      {activeTab === 'hypotheses' && (
+        <div className="flex-1 flex overflow-hidden">
+          {isLoadingTree ? (
+            <div className="flex items-center justify-center flex-1">
+              <div className="text-surface-500 dark:text-surface-400">Loading hypothesis tree...</div>
+            </div>
+          ) : hypothesisTree ? (
+            <>
+              <div className="flex-1 overflow-hidden">
+                <HypothesisTreeViz
+                  tree={hypothesisTree}
+                  onNodeSelect={setSelectedHypothesis}
+                />
+              </div>
+              {selectedHypothesis && (
+                <HypothesisDetailPanel
+                  hypothesis={selectedHypothesis}
+                  onClose={() => setSelectedHypothesis(null)}
+                  onUpdateConfidence={handleUpdateStatus}
+                />
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center flex-1">
+              <div className="text-center max-w-md">
+                <p className="text-surface-600 dark:text-surface-400">
+                  No hypotheses yet. Submit a thesis and run research to generate hypotheses.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
