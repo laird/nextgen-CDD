@@ -86,13 +86,13 @@ export async function registerHypothesesRoutes(fastify: FastifyInstance): Promis
 
       const hypothesis = await hypothesisRepo.create({
         engagementId,
-        parentId: body.parent_id,
         type: body.type,
         content: body.content,
-        confidence: body.confidence,
-        importance: body.importance,
-        testability: body.testability,
         createdBy: user.id,
+        ...(body.parent_id !== undefined && { parentId: body.parent_id }),
+        ...(body.confidence !== undefined && { confidence: body.confidence }),
+        ...(body.importance !== undefined && { importance: body.importance }),
+        ...(body.testability !== undefined && { testability: body.testability }),
       });
 
       reply.status(201).send({ hypothesis });
@@ -148,11 +148,11 @@ export async function registerHypothesesRoutes(fastify: FastifyInstance): Promis
       const body = request.body;
 
       const hypothesis = await hypothesisRepo.update(hypothesisId, {
-        content: body.content,
-        confidence: body.confidence,
-        status: body.status,
-        importance: body.importance,
-        testability: body.testability,
+        ...(body.content !== undefined && { content: body.content }),
+        ...(body.confidence !== undefined && { confidence: body.confidence }),
+        ...(body.status !== undefined && { status: body.status }),
+        ...(body.importance !== undefined && { importance: body.importance }),
+        ...(body.testability !== undefined && { testability: body.testability }),
       });
 
       if (!hypothesis) {
@@ -219,8 +219,8 @@ export async function registerHypothesesRoutes(fastify: FastifyInstance): Promis
         sourceId: hypothesisId,
         targetId: body.target_id,
         relationship: body.relationship,
-        strength: body.strength,
-        reasoning: body.reasoning,
+        ...(body.strength !== undefined && { strength: body.strength }),
+        ...(body.reasoning !== undefined && { reasoning: body.reasoning }),
       });
 
       reply.status(201).send({ edge });
