@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS hypotheses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   engagement_id UUID NOT NULL,
   parent_id UUID REFERENCES hypotheses(id) ON DELETE SET NULL,
-  type VARCHAR(20) NOT NULL CHECK (type IN ('thesis', 'sub_thesis', 'assumption')),
+  type VARCHAR(20) NOT NULL CHECK (type IN ('thesis', 'sub_thesis', 'assumption', 'evidence')),
   content TEXT NOT NULL,
   confidence DECIMAL(3,2) DEFAULT 0.50 CHECK (confidence >= 0 AND confidence <= 1),
   status VARCHAR(20) NOT NULL DEFAULT 'untested'
