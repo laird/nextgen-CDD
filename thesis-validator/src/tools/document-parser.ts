@@ -11,6 +11,11 @@
 
 import { readFile } from 'fs/promises';
 import { extname } from 'path';
+import { PDFParse } from 'pdf-parse';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+import * as cheerio from 'cheerio';
+import Tesseract from 'tesseract.js';
 
 /**
  * Parsed document content
@@ -186,7 +191,7 @@ export class DocumentParser {
         break;
 
       case 'text/html':
-        content = this.parseHTML(buffer.toString('utf-8'));
+        content = this.parseHTMLContent(buffer.toString('utf-8'));
         metadata = this.extractTextMetadata(content);
         break;
 
@@ -195,26 +200,37 @@ export class DocumentParser {
         metadata = this.extractTextMetadata(content);
         break;
 
-      case 'application/pdf':
-        // In production, use a PDF parsing library like pdf-parse
-        content = await this.parsePDFPlaceholder(buffer);
-        metadata = this.extractPDFMetadata(buffer);
-        break;
-
-      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        // In production, use a DOCX parsing library like mammoth
-        content = await this.parseDOCXPlaceholder(buffer);
-        metadata = this.extractTextMetadata(content);
-        break;
-
-      case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-        // In production, use an XLSX parsing library like xlsx
-        content = await this.parseXLSXPlaceholder(buffer);
-        metadata = this.extractTextMetadata(content);
-        if (opts.extractTables) {
-          tables = await this.extractXLSXTablesPlaceholder(buffer);
+      case 'application/pdf': {
+        const pdfResult = await this.parsePDF(buffer);
+        if (pdfResult.needsOCR) {
+          const ocrResult = await this.performOCR(buffer);
+          content = ocrResult.content;
+          metadata = {
+            ...pdfResult.metadata,
+            wordCount: content.split(/\s+/).filter(Boolean).length,
+            properties: { ocrConfidence: ocrResult.confidence },
+          };
+        } else {
+          content = pdfResult.content;
+          metadata = pdfResult.metadata;
         }
         break;
+      }
+
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        content = await this.parseDOCX(buffer);
+        metadata = this.extractTextMetadata(content);
+        break;
+
+      case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+        const xlsxResult = this.parseXLSX(buffer);
+        content = xlsxResult.content;
+        metadata = this.extractTextMetadata(content);
+        if (opts.extractTables) {
+          tables = xlsxResult.tables;
+        }
+        break;
+      }
 
       default:
         // Attempt to read as text
@@ -237,7 +253,7 @@ export class DocumentParser {
       content,
       chunks,
       metadata,
-      tables: tables.length > 0 ? tables : undefined,
+      ...(tables.length > 0 ? { tables } : {}),
     };
   }
 
@@ -306,37 +322,31 @@ export class DocumentParser {
 
     // Try to extract title from first line
     const firstLine = lines[0]?.trim();
-    const title = firstLine && firstLine.length < 200 ? firstLine : undefined;
+    const title = firstLine && firstLine.length < 200 ? firstLine : null;
 
     return {
-      title,
+      ...(title ? { title } : {}),
       wordCount: words.length,
       pageCount: Math.ceil(words.length / 300), // Approximate pages
     };
   }
 
   /**
-   * Parse HTML content
+   * Parse HTML content using cheerio
    */
-  private parseHTML(html: string): string {
-    // Remove scripts and styles
-    let content = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-    content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  private parseHTMLContent(html: string): string {
+    const $ = cheerio.load(html);
 
-    // Remove HTML tags
-    content = content.replace(/<[^>]+>/g, ' ');
+    // Remove scripts, styles, and other non-content elements
+    $('script, style, noscript, iframe, svg').remove();
 
-    // Decode HTML entities
-    content = content.replace(/&nbsp;/g, ' ');
-    content = content.replace(/&amp;/g, '&');
-    content = content.replace(/&lt;/g, '<');
-    content = content.replace(/&gt;/g, '>');
-    content = content.replace(/&quot;/g, '"');
+    // Get text content
+    let text = $('body').text() || $.root().text();
 
     // Clean up whitespace
-    content = content.replace(/\s+/g, ' ').trim();
+    text = text.replace(/\s+/g, ' ').trim();
 
-    return content;
+    return text;
   }
 
   /**
@@ -357,54 +367,115 @@ export class DocumentParser {
   }
 
   /**
-   * Placeholder PDF parser (replace with actual implementation)
+   * Parse PDF document
    */
-  private async parsePDFPlaceholder(buffer: Buffer): Promise<string> {
-    // In production, use pdf-parse or similar library
-    return `[PDF Document - ${buffer.length} bytes]\n\n` +
-           'This is a placeholder for PDF content extraction. ' +
-           'In production, integrate with a PDF parsing library like pdf-parse or Unstructured.io.';
+  private async parsePDF(buffer: Buffer): Promise<{ content: string; metadata: DocumentMetadata; needsOCR: boolean }> {
+    try {
+      const pdf = new PDFParse({ data: buffer });
+      const textResult = await pdf.getText();
+      const infoResult = await pdf.getInfo();
+      await pdf.destroy();
+
+      const text = textResult.text;
+      // Check if PDF has actual text or is scanned
+      const hasText = text.trim().length > 50;
+
+      if (!hasText) {
+        return {
+          content: '',
+          metadata: {
+            wordCount: 0,
+            pageCount: infoResult.pages.length,
+          },
+          needsOCR: true,
+        };
+      }
+
+      return {
+        content: text,
+        metadata: {
+          ...(infoResult.info?.title ? { title: infoResult.info.title } : {}),
+          ...(infoResult.info?.author ? { author: infoResult.info.author } : {}),
+          wordCount: text.split(/\s+/).filter(Boolean).length,
+          pageCount: infoResult.pages.length,
+          ...(infoResult.info?.creationDate ? { createdDate: infoResult.info.creationDate.toISOString() } : {}),
+        },
+        needsOCR: false,
+      };
+    } catch (error) {
+      throw new Error(`PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
-   * Extract PDF metadata placeholder
+   * Perform OCR on image/scanned PDF
    */
-  private extractPDFMetadata(_buffer: Buffer): DocumentMetadata {
-    return {
-      wordCount: 0,
-      pageCount: 1,
-    };
+  private async performOCR(buffer: Buffer): Promise<{ content: string; confidence: number }> {
+    try {
+      const result = await Tesseract.recognize(buffer, 'eng', {
+        logger: () => {}, // Suppress progress logs
+      });
+
+      return {
+        content: result.data.text,
+        confidence: result.data.confidence / 100,
+      };
+    } catch (error) {
+      throw new Error(`OCR failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
-   * Placeholder DOCX parser (replace with actual implementation)
+   * Parse DOCX document
    */
-  private async parseDOCXPlaceholder(buffer: Buffer): Promise<string> {
-    // In production, use mammoth or similar library
-    return `[DOCX Document - ${buffer.length} bytes]\n\n` +
-           'This is a placeholder for DOCX content extraction. ' +
-           'In production, integrate with a DOCX parsing library like mammoth.';
+  private async parseDOCX(buffer: Buffer): Promise<string> {
+    try {
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value;
+    } catch (error) {
+      throw new Error(`DOCX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
-   * Placeholder XLSX parser (replace with actual implementation)
+   * Parse XLSX document
    */
-  private async parseXLSXPlaceholder(buffer: Buffer): Promise<string> {
-    // In production, use xlsx or similar library
-    return `[XLSX Document - ${buffer.length} bytes]\n\n` +
-           'This is a placeholder for XLSX content extraction. ' +
-           'In production, integrate with an XLSX parsing library.';
-  }
+  private parseXLSX(buffer: Buffer): { content: string; tables: ParsedTable[] } {
+    try {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const tables: ParsedTable[] = [];
+      let allContent = '';
 
-  /**
-   * Placeholder XLSX table extractor
-   */
-  private async extractXLSXTablesPlaceholder(_buffer: Buffer): Promise<ParsedTable[]> {
-    return [{
-      id: crypto.randomUUID(),
-      headers: ['Column A', 'Column B', 'Column C'],
-      rows: [['Sample', 'Data', 'Row']],
-    }];
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) continue;
+
+        // Convert to JSON for table extraction
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1 });
+
+        if (jsonData.length > 0) {
+          const headers = (jsonData[0] ?? []).map(h => String(h ?? ''));
+          const rows = jsonData.slice(1).map(row =>
+            (row ?? []).map(cell => String(cell ?? ''))
+          );
+
+          tables.push({
+            id: crypto.randomUUID(),
+            headers,
+            rows,
+            caption: sheetName,
+          });
+
+          // Also get text content
+          const textContent = XLSX.utils.sheet_to_txt(sheet);
+          allContent += `\n\n--- ${sheetName} ---\n${textContent}`;
+        }
+      }
+
+      return { content: allContent.trim(), tables };
+    } catch (error) {
+      throw new Error(`XLSX parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
