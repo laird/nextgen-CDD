@@ -26,8 +26,8 @@ export function EngagementResearch({
   onComplete,
 }: EngagementResearchProps): React.ReactElement {
   const [view, setView] = useState<ResearchView>('input_thesis');
-  const [thesis, setThesis] = useState('');
-  const [isEditingThesis, setIsEditingThesis] = useState(true);
+  const [thesis, setThesis] = useState(engagement.thesis?.statement ?? '');
+  const [isEditingThesis, setIsEditingThesis] = useState(!engagement.thesis?.statement);
   const [job, setJob] = useState<ResearchJob | null>(null);
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
