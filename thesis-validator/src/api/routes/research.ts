@@ -77,7 +77,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       const { engagementId } = request.params;
       const config = request.body;
 
-      const engagement = getEngagement(engagementId);
+      const engagement = await getEngagement(engagementId);
       if (!engagement) {
         reply.status(404).send({
           error: 'Not Found',
@@ -86,7 +86,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      if (!engagement.thesis?.statement) {
+      if (!engagement.investment_thesis?.summary) {
         reply.status(400).send({
           error: 'Bad Request',
           message: 'Investment thesis must be submitted before starting research',
@@ -135,7 +135,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
     ) => {
       const { engagementId } = request.params;
 
-      const engagement = getEngagement(engagementId);
+      const engagement = await getEngagement(engagementId);
       if (!engagement) {
         reply.status(404).send({
           error: 'Not Found',
@@ -148,11 +148,11 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       const hypotheses = await dealMemory.searchHypotheses(engagementId, '', 100);
 
       // Build tree structure
-      const tree = buildHypothesisTree(hypotheses, engagement.thesis?.statement ?? '');
+      const tree = buildHypothesisTree(hypotheses, engagement.investment_thesis?.summary ?? '');
 
       reply.send({
         engagement_id: engagementId,
-        thesis: engagement.thesis?.statement,
+        thesis: engagement.investment_thesis?.summary,
         tree,
         node_count: hypotheses.length,
       });
@@ -196,7 +196,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       const { engagementId } = request.params;
       const config = request.body;
 
-      const engagement = getEngagement(engagementId);
+      const engagement = await getEngagement(engagementId);
       if (!engagement) {
         reply.status(404).send({
           error: 'Not Found',
@@ -293,7 +293,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       const { engagementId } = request.params;
       const { format, include_evidence, include_contradictions } = request.query;
 
-      const engagement = getEngagement(engagementId);
+      const engagement = await getEngagement(engagementId);
       if (!engagement) {
         reply.status(404).send({
           error: 'Not Found',
@@ -352,7 +352,7 @@ async function executeResearchWorkflowAsync(
   try {
     // Build the thesis object from engagement data
     const thesis = {
-      summary: engagement.thesis?.statement ?? '',
+      summary: engagement.investment_thesis?.summary ?? '',
       key_value_drivers: [],
       key_risks: [],
     };
@@ -474,7 +474,7 @@ function generateReport(
       id: engagement.id,
       name: engagement.name,
       target: engagement.target,
-      thesis: engagement.thesis,
+      thesis: engagement.investment_thesis,
       status: engagement.status,
     },
     summary: {
@@ -529,7 +529,7 @@ function generateMarkdownReport(data: {
 ## Executive Summary
 
 **Target Company:** ${data.engagement.target.name}
-**Investment Thesis:** ${data.engagement.thesis?.statement ?? 'Not specified'}
+**Investment Thesis:** ${data.engagement.investment_thesis?.summary ?? 'Not specified'}
 
 ### Key Metrics
 - **Hypotheses Tested:** ${data.summary.hypothesis_count}
@@ -575,7 +575,7 @@ function generateHtmlReport(data: {
 
   <h2>Executive Summary</h2>
   <p><strong>Target Company:</strong> ${data.engagement.target.name}</p>
-  <p><strong>Investment Thesis:</strong> ${data.engagement.thesis?.statement ?? 'Not specified'}</p>
+  <p><strong>Investment Thesis:</strong> ${data.engagement.investment_thesis?.summary ?? 'Not specified'}</p>
 
   <h3>Key Metrics</h3>
   <div class="metric">Hypotheses: ${data.summary.hypothesis_count}</div>
