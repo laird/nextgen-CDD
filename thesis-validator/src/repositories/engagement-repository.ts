@@ -126,11 +126,18 @@ export class EngagementRepository {
     sector?: string;
     limit?: number;
     offset?: number;
+    includeArchived?: boolean;
   }): Promise<{ engagements: EngagementDTO[]; total: number }> {
     const pool = getPool();
     const conditions: string[] = [];
     const values: unknown[] = [];
     let paramIndex = 1;
+
+    // Exclude archived by default unless explicitly requested
+    if (!options?.includeArchived && !options?.status) {
+      conditions.push(`status != $${paramIndex++}`);
+      values.push('archived');
+    }
 
     if (options?.status) {
       conditions.push(`status = $${paramIndex++}`);
