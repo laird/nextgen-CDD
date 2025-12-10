@@ -208,7 +208,7 @@ Output structured JSON with clear hierarchy and relationships.`,
         decomposition,
         hypotheses: storedHypotheses,
         relationships,
-        keyQuestions: decomposition.key_questions,
+        keyQuestions: Array.isArray(decomposition.key_questions) ? decomposition.key_questions : [],
       }, {
         reasoning: `Created hypothesis tree with ${storedHypotheses.length} nodes and ${relationships.length} relationships`,
         startTime,
@@ -298,7 +298,8 @@ Output as JSON:
 
     // Create sub-thesis nodes
     // Use importance as initial confidence - higher importance means more critical to thesis
-    for (const subThesis of decomposition.sub_theses) {
+    const subTheses = Array.isArray(decomposition.sub_theses) ? decomposition.sub_theses : [];
+    for (const subThesis of subTheses) {
       // Initial confidence based on importance: 0.4-0.6 range to avoid extremes
       // High importance (0.9) -> 0.45 (needs more validation)
       // Low importance (0.3) -> 0.55 (less critical, slightly more confident by default)
@@ -321,7 +322,8 @@ Output as JSON:
 
     // Create assumption nodes
     // Use testability and risk_level to compute initial confidence
-    for (const assumption of decomposition.assumptions) {
+    const assumptions = Array.isArray(decomposition.assumptions) ? decomposition.assumptions : [];
+    for (const assumption of assumptions) {
       // Risk level affects initial confidence:
       // - high risk -> 0.35 (needs significant validation)
       // - medium risk -> 0.45
