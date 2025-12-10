@@ -354,14 +354,16 @@ export class RuvectorClient {
         id,
         score,
         metadata: entry.metadata as T,
-        content: entry.content,
-        certificate: {
-          merkle_proof: createHash('sha256').update(id).digest('hex'),
-          explanation: `Retrieved based on semantic similarity (${(similarity * 100).toFixed(1)}% match)`,
-          retrieval_timestamp: Date.now(),
-          similarity_score: similarity,
-          query_embedding_hash: queryHash,
-        },
+        ...(entry.content !== undefined && { content: entry.content }),
+        ...(true && {
+          certificate: {
+            merkle_proof: createHash('sha256').update(id).digest('hex'),
+            explanation: `Retrieved based on semantic similarity (${(similarity * 100).toFixed(1)}% match)`,
+            retrieval_timestamp: Date.now(),
+            similarity_score: similarity,
+            query_embedding_hash: queryHash,
+          }
+        }),
       });
     }
 
@@ -381,7 +383,7 @@ export class RuvectorClient {
    */
   private applyMMR<T>(
     results: SearchResult<T>[],
-    query: number[] | Float32Array,
+    _query: number[] | Float32Array,
     ns: Namespace,
     diversityWeight: number,
     topK: number
@@ -589,7 +591,7 @@ export class RuvectorClient {
   ): Promise<SearchResult[]> {
     return this.search(namespace, query, {
       top_k: options.top_k,
-      min_score: options.min_score,
+      ...(options.min_score !== undefined && { min_score: options.min_score }),
     });
   }
 

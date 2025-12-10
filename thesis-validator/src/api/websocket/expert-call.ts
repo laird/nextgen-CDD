@@ -11,10 +11,9 @@ import {
   createExpertCallWorkflow,
   processExpertCallTranscript,
   type ExpertCallSession,
-  type RealtimeChunkResult,
 } from '../../workflows/index.js';
 import { hasEngagementAccess } from '../middleware/index.js';
-import { decodeToken, type UserPayload } from '../middleware/auth.js';
+import { decodeToken } from '../middleware/auth.js';
 import { publishEvent } from './events.js';
 import { createExpertCallInsightEvent } from '../../models/index.js';
 
@@ -28,7 +27,11 @@ interface ActiveSession {
   engagementId: string;
   startedAt: number;
   chunkCount: number;
-  insights: RealtimeChunkResult[];
+  insights: Array<{
+    type: string;
+    content: string;
+    confidence: number;
+  }>;
 }
 
 const activeSessions = new Map<string, ActiveSession>();
@@ -97,9 +100,8 @@ export async function registerExpertCallWebSocket(fastify: FastifyInstance): Pro
       }
 
       // Create expert call workflow
-      const workflow = createExpertCallWorkflow({
-        engagement_id: engagementId,
-        realtime_mode: true,
+      createExpertCallWorkflow({
+        realTimeMode: true,
       });
 
       // Create active session
@@ -107,12 +109,13 @@ export async function registerExpertCallWebSocket(fastify: FastifyInstance): Pro
       const activeSession: ActiveSession = {
         session: {
           id: sessionId,
-          engagement_id: engagementId,
-          status: 'active',
-          started_at: Date.now(),
-          chunks_processed: 0,
-          insights_generated: 0,
-          questions_suggested: 0,
+          engagementId,
+          startTime: Date.now(),
+          speakers: new Set(),
+          chunks: [],
+          insights: [],
+          followUpsAsked: [],
+          isActive: true,
         },
         socket,
         userId: user.id,
@@ -201,17 +204,20 @@ async function handleTranscriptChunk(
   chunk: z.infer<typeof TranscriptChunkSchema>
 ): Promise<void> {
   session.chunkCount++;
-  session.session.chunks_processed++;
 
   // Process chunk through workflow
   const result = await processExpertCallTranscript({
-    engagement_id: session.engagementId,
-    transcript_chunks: [{
+    engagementId: session.engagementId,
+    callId: session.session.id,
+    segments: [{
+      id: `${session.session.id}_${session.chunkCount}`,
       speaker: chunk.speaker,
       text: chunk.text,
-      timestamp: chunk.timestamp ?? Date.now(),
+      startTime: chunk.timestamp ?? Date.now(),
+      endTime: (chunk.timestamp ?? Date.now()) + 1000,
+      confidence: chunk.is_final ? 0.9 : 0.7,
     }],
-    realtime_mode: true,
+    dealMemory: {} as any, // TODO: Pass actual deal memory
   });
 
   // Send processing acknowledgment
@@ -222,11 +228,16 @@ async function handleTranscriptChunk(
   }));
 
   // If insights were generated, send them
-  if (result.insights && result.insights.length > 0) {
-    session.session.insights_generated += result.insights.length;
+  if (result.keyInsights && result.keyInsights.length > 0) {
+    for (const keyInsight of result.keyInsights) {
+      const { insight } = keyInsight;
 
-    for (const insight of result.insights) {
-      session.insights.push(insight as RealtimeChunkResult);
+      // Store insight
+      session.insights.push({
+        type: insight.type,
+        content: insight.content,
+        confidence: insight.confidence,
+      });
 
       // Send insight to client
       session.socket.send(JSON.stringify({
@@ -235,34 +246,42 @@ async function handleTranscriptChunk(
           type: insight.type,
           content: insight.content,
           confidence: insight.confidence,
-          hypothesis_relevance: insight.hypothesis_relevance,
           timestamp: Date.now(),
         },
       }));
+
+      // Map insight type to event schema type
+      const eventInsightType: 'key_point' | 'contradiction' | 'follow_up' | 'data_point' =
+        insight.type === 'market_insight' ? 'key_point' : insight.type as 'key_point' | 'data_point';
 
       // Publish event for other subscribers
       publishEvent(createExpertCallInsightEvent(
         session.engagementId,
         session.session.id,
-        insight.type,
-        insight.content,
-        insight.confidence,
-        insight.hypothesis_relevance
+        {
+          speaker: chunk.speaker,
+          transcript_chunk: chunk.text,
+          insights: [{
+            type: eventInsightType,
+            content: insight.content,
+            confidence: insight.confidence,
+            ...(keyInsight.relatedHypotheses[0] !== undefined && { related_hypothesis_id: keyInsight.relatedHypotheses[0] }),
+          }],
+          suggested_followups: keyInsight.actionItems,
+          relevant_evidence_ids: [],
+        }
       ));
     }
   }
 
-  // If suggested questions were generated, send them
-  if (result.suggested_questions && result.suggested_questions.length > 0) {
-    session.session.questions_suggested += result.suggested_questions.length;
-
+  // If follow-up questions were generated, send them
+  if (result.followUpQuestions && result.followUpQuestions.length > 0) {
     session.socket.send(JSON.stringify({
       type: 'suggested_questions',
-      questions: result.suggested_questions.map((q) => ({
-        question: q.question,
-        rationale: q.rationale,
-        hypothesis_link: q.hypothesis_link,
-        priority: q.priority,
+      questions: result.followUpQuestions.map((q) => ({
+        question: q,
+        rationale: 'Generated from transcript analysis',
+        priority: 'medium',
       })),
     }));
   }
@@ -273,25 +292,23 @@ async function handleTranscriptChunk(
  */
 async function handleQuestionRequest(
   session: ActiveSession,
-  request: z.infer<typeof QuestionRequestSchema>
+  _request: z.infer<typeof QuestionRequestSchema>
 ): Promise<void> {
   // Generate questions based on current context
   const result = await processExpertCallTranscript({
-    engagement_id: session.engagementId,
-    transcript_chunks: [],
-    realtime_mode: true,
-    generate_questions: true,
-    context: request.context,
+    engagementId: session.engagementId,
+    callId: session.session.id,
+    segments: [],
+    dealMemory: {} as any, // TODO: Pass actual deal memory
   });
 
-  if (result.suggested_questions && result.suggested_questions.length > 0) {
+  if (result.followUpQuestions && result.followUpQuestions.length > 0) {
     session.socket.send(JSON.stringify({
       type: 'suggested_questions',
-      questions: result.suggested_questions.map((q) => ({
-        question: q.question,
-        rationale: q.rationale,
-        hypothesis_link: q.hypothesis_link,
-        priority: q.priority,
+      questions: result.followUpQuestions.map((q) => ({
+        question: q,
+        rationale: 'Generated from session context',
+        priority: 'medium',
       })),
       requested: true,
     }));
@@ -313,7 +330,7 @@ async function handleSessionControl(
 ): Promise<void> {
   switch (control.type) {
     case 'pause':
-      session.session.status = 'paused';
+      session.session.isActive = false;
       session.socket.send(JSON.stringify({
         type: 'session_paused',
         timestamp: Date.now(),
@@ -321,7 +338,7 @@ async function handleSessionControl(
       break;
 
     case 'resume':
-      session.session.status = 'active';
+      session.session.isActive = true;
       session.socket.send(JSON.stringify({
         type: 'session_resumed',
         timestamp: Date.now(),
@@ -351,8 +368,7 @@ async function handleSessionControl(
  * Finalize session and store results
  */
 async function finalizeSession(session: ActiveSession): Promise<void> {
-  session.session.status = 'completed';
-  session.session.ended_at = Date.now();
+  session.session.isActive = false;
 
   // Generate final summary
   const summary = getSessionSummary(session);
@@ -378,11 +394,11 @@ function getSessionSummary(session: ActiveSession): {
     engagement_id: session.engagementId,
     duration_ms: Date.now() - session.startedAt,
     chunks_processed: session.chunkCount,
-    insights_generated: session.session.insights_generated,
-    questions_suggested: session.session.questions_suggested,
-    key_insights: session.insights.slice(0, 5).map((i) => ({
-      type: i.type,
-      content: i.content,
+    insights_generated: session.insights.length,
+    questions_suggested: session.session.followUpsAsked.length,
+    key_insights: session.insights.slice(0, 5).map((insight) => ({
+      type: insight.type,
+      content: insight.content,
     })),
   };
 }

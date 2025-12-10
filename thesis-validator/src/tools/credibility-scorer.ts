@@ -9,7 +9,7 @@
  * - Cross-reference validation
  */
 
-import { getDomainCredibility, credibleDomains } from './web-search.js';
+import { getDomainCredibility } from './web-search.js';
 
 /**
  * Credibility score result
@@ -483,7 +483,7 @@ export class CredibilityScorer {
   /**
    * Get freshness reason
    */
-  private getFreshnessReason(metadata: SourceMetadata, score: number): string {
+  private getFreshnessReason(metadata: SourceMetadata, _score: number): string {
     if (!metadata.publishedDate) {
       return 'Publication date unknown';
     }

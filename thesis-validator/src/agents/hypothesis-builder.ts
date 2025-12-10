@@ -359,7 +359,7 @@ Output as JSON:
    */
   private async buildRelationships(
     hypotheses: HypothesisNode[],
-    decomposition: HypothesisDecomposition
+    _decomposition: HypothesisDecomposition
   ): Promise<Array<{
     sourceId: string;
     targetId: string;

@@ -245,7 +245,7 @@ export class TranscriptProcessor {
       ? segments[segments.length - 1]!.endTime - segments[0]!.startTime
       : 0;
 
-    return {
+    const result: TranscriptAnalysis = {
       id,
       callId,
       duration,
@@ -255,8 +255,13 @@ export class TranscriptProcessor {
       topics,
       followUpQuestions,
       summary,
-      contradictions: contradictions.length > 0 ? contradictions : undefined,
     };
+
+    if (contradictions.length > 0) {
+      result.contradictions = contradictions;
+    }
+
+    return result;
   }
 
   /**
@@ -349,14 +354,20 @@ export class TranscriptProcessor {
       const combinedText = data.segments.map((s) => s.text).join(' ');
       const expertise = this.inferExpertise(combinedText);
 
-      profiles.push({
+      const profile: ExpertProfile = {
         name: speaker,
-        role: data.segments[0]?.speakerRole,
         expertise,
         credibilityIndicators: this.extractCredibilityIndicators(combinedText),
         speakingTime: data.totalTime,
         segmentCount: data.segments.length,
-      });
+      };
+
+      const firstSegmentRole = data.segments[0]?.speakerRole;
+      if (firstSegmentRole !== undefined) {
+        profile.role = firstSegmentRole;
+      }
+
+      profiles.push(profile);
     }
 
     return profiles;

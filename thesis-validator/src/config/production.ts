@@ -43,7 +43,7 @@ const productionOverrides: Partial<Config> = {
   api: {
     host: '0.0.0.0',
     port: parseInt(process.env['PORT'] ?? '3000', 10),
-    logLevel: 'warn',
+    logLevel: 'info',
     corsOrigins: process.env['CORS_ORIGINS']?.split(',') ?? [],
     rateLimitMax: 50, // Stricter rate limiting in production
     rateLimitWindow: '1 minute',
@@ -136,7 +136,7 @@ const productionOverrides: Partial<Config> = {
   },
 
   logging: {
-    level: 'warn',
+    level: 'info',
     format: 'json',
     includeTimestamp: true,
   },

@@ -10,10 +10,9 @@
  */
 
 import type { DealMemory } from '../memory/deal-memory.js';
-import { getInstitutionalMemory, type DealPattern, type MethodologyTemplate } from '../memory/institutional-memory.js';
+import { getInstitutionalMemory, type DealPattern } from '../memory/institutional-memory.js';
 import { getReflexionStore } from '../memory/reflexion-store.js';
-import { getSkillLibrary } from '../memory/skill-library.js';
-import type { Engagement, EngagementEvent, Sector, DealType } from '../models/index.js';
+import type { Engagement, EngagementEvent } from '../models/index.js';
 import { createEvent } from '../models/events.js';
 import { embed } from '../tools/embedding.js';
 
@@ -401,7 +400,6 @@ export class CloseoutWorkflow {
     if (!input.outcome) return 0;
 
     const institutionalMemory = getInstitutionalMemory();
-    const hypotheses = await input.dealMemory.getAllHypotheses();
 
     // Create pattern from engagement
     const pattern: Omit<DealPattern, 'id'> = {
@@ -432,14 +430,10 @@ export class CloseoutWorkflow {
   /**
    * Update skill library based on engagement
    */
-  private async updateSkills(input: CloseoutInput): Promise<number> {
-    if (!input.outcome) return 0;
-
-    const skillLibrary = getSkillLibrary();
-    let updated = 0;
-
-    // Record execution results for used skills
+  private async updateSkills(_input: CloseoutInput): Promise<number> {
+    // In production, would update skill library with execution results
     // This would track which skills were used during the engagement
+    const updated = 0;
 
     return updated;
   }

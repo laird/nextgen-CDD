@@ -12,11 +12,11 @@
 
 // Direct imports for createAgentSwarm to avoid circular dependency issues
 import { createConductorAgent as _createConductorAgent, ConductorAgent } from './conductor.js';
-import { createHypothesisBuilderAgent as _createHypothesisBuilderAgent, HypothesisBuilderAgent } from './hypothesis-builder.js';
-import { createEvidenceGathererAgent as _createEvidenceGathererAgent, EvidenceGathererAgent } from './evidence-gatherer.js';
-import { createContradictionHunterAgent as _createContradictionHunterAgent, ContradictionHunterAgent } from './contradiction-hunter.js';
-import { createExpertSynthesizerAgent as _createExpertSynthesizerAgent, ExpertSynthesizerAgent } from './expert-synthesizer.js';
-import { createComparablesFinderAgent as _createComparablesFinderAgent, ComparablesFinderAgent } from './comparables-finder.js';
+import { createHypothesisBuilderAgent as _createHypothesisBuilderAgent, HypothesisBuilderAgent, type HypothesisBuilderInput } from './hypothesis-builder.js';
+import { createEvidenceGathererAgent as _createEvidenceGathererAgent, EvidenceGathererAgent, type EvidenceGathererInput } from './evidence-gatherer.js';
+import { createContradictionHunterAgent as _createContradictionHunterAgent, ContradictionHunterAgent, type ContradictionHunterInput } from './contradiction-hunter.js';
+import { createExpertSynthesizerAgent as _createExpertSynthesizerAgent, ExpertSynthesizerAgent, type ExpertSynthesizerInput } from './expert-synthesizer.js';
+import { createComparablesFinderAgent as _createComparablesFinderAgent, ComparablesFinderAgent, type ComparablesFinderInput } from './comparables-finder.js';
 
 // Base agent
 export {
@@ -106,27 +106,27 @@ export function createAgentSwarm(): {
   // Register agents with conductor
   conductor.registerAgent('hypothesis_builder', async (input, context) => {
     hypothesisBuilder.setContext(context);
-    return hypothesisBuilder.execute(input as HypothesisBuilderInput);
+    return hypothesisBuilder.execute(input as unknown as HypothesisBuilderInput);
   });
 
   conductor.registerAgent('evidence_gatherer', async (input, context) => {
     evidenceGatherer.setContext(context);
-    return evidenceGatherer.execute(input as EvidenceGathererInput);
+    return evidenceGatherer.execute(input as unknown as EvidenceGathererInput);
   });
 
   conductor.registerAgent('contradiction_hunter', async (input, context) => {
     contradictionHunter.setContext(context);
-    return contradictionHunter.execute(input as ContradictionHunterInput);
+    return contradictionHunter.execute(input as unknown as ContradictionHunterInput);
   });
 
   conductor.registerAgent('expert_synthesizer', async (input, context) => {
     expertSynthesizer.setContext(context);
-    return expertSynthesizer.execute(input as ExpertSynthesizerInput);
+    return expertSynthesizer.execute(input as unknown as ExpertSynthesizerInput);
   });
 
   conductor.registerAgent('comparables_finder', async (input, context) => {
     comparablesFinder.setContext(context);
-    return comparablesFinder.execute(input as ComparablesFinderInput);
+    return comparablesFinder.execute(input as unknown as ComparablesFinderInput);
   });
 
   return {

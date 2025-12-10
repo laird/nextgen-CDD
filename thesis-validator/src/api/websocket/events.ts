@@ -5,18 +5,16 @@
  */
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { WebSocket } from 'ws';
-import { z } from 'zod';
+import type { WebSocket } from '@fastify/websocket';
 import {
   SubscriptionRequestSchema,
-  WebSocketMessageSchema,
   matchesFilter,
   type EngagementEvent,
   type EventFilter,
   type WebSocketMessage,
 } from '../../models/index.js';
 import { hasEngagementAccess } from '../middleware/index.js';
-import { decodeToken, type UserPayload } from '../middleware/auth.js';
+import { decodeToken } from '../middleware/auth.js';
 
 /**
  * Active WebSocket connections by engagement
@@ -84,7 +82,7 @@ export async function registerEventWebSocket(fastify: FastifyInstance): Promise<
    */
   fastify.get(
     '/engagements/:engagementId/events',
-    { websocket: true },
+    { websocket: true } as any, // Fastify WebSocket plugin typing issue
     (socket: WebSocket, request: FastifyRequest<{ Params: { engagementId: string } }>) => {
       const { engagementId } = request.params;
 
@@ -125,7 +123,7 @@ export async function registerEventWebSocket(fastify: FastifyInstance): Promise<
       connections.set(engagementId, engagementConnections);
 
       // Send welcome message
-      const welcomeMessage: WebSocketMessage = {
+      const welcomeMessage = {
         type: 'connected',
         payload: {
           engagement_id: engagementId,
@@ -144,10 +142,13 @@ export async function registerEventWebSocket(fastify: FastifyInstance): Promise<
             // Update filters
             const subscribeRequest = SubscriptionRequestSchema.safeParse(message.payload);
             if (subscribeRequest.success) {
-              connection.filters = subscribeRequest.data.filters ?? {};
+              // Map event_types from subscription request to filters
+              connection.filters = subscribeRequest.data.event_types
+                ? { event_types: subscribeRequest.data.event_types }
+                : {};
 
               const ackMessage: WebSocketMessage = {
-                type: 'subscribed',
+                type: 'subscription_ack',
                 payload: {
                   filters: connection.filters,
                   subscribed_at: Date.now(),
@@ -191,7 +192,7 @@ export function getConnectionStats(): {
   const connectionsByEngagement: Record<string, number> = {};
   let totalConnections = 0;
 
-  for (const [engagementId, conns] of connections) {
+  for (const [engagementId, conns] of Array.from(connections)) {
     connectionsByEngagement[engagementId] = conns.length;
     totalConnections += conns.length;
   }

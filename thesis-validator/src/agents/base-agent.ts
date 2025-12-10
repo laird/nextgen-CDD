@@ -18,7 +18,6 @@ import { createAgentStatusEvent } from '../models/events.js';
 import { embed } from '../tools/embedding.js';
 import {
   LLMProvider,
-  getLLMProvider,
   getLLMProviderConfig,
   type LLMProviderConfig,
   type LLMProviderType,
@@ -463,7 +462,7 @@ export abstract class BaseAgent {
 
         // Add assistant response and tool results to messages
         messages.push({ role: 'assistant', content: response.content });
-        messages.push({ role: 'user', content: toolResults });
+        messages.push({ role: 'user', content: toolResults as unknown as Anthropic.ContentBlock[] });
       } catch (error) {
         this.updateStatus('error', error instanceof Error ? error.message : 'Unknown error');
         throw error;
@@ -514,7 +513,37 @@ export abstract class BaseAgent {
   abstract execute(input: unknown): Promise<AgentResult>;
 
   /**
-   * Create a standard result
+   * Create a standard result (with data)
+   */
+  protected createResult<T>(
+    success: true,
+    data: T,
+    options?: {
+      error?: string;
+      reasoning?: string;
+      toolCalls?: Array<{ tool: string; input: Record<string, unknown>; output: unknown }>;
+      tokensUsed?: { input: number; output: number };
+      startTime: number;
+    }
+  ): AgentResult<T>;
+
+  /**
+   * Create a standard result (without data, for errors)
+   */
+  protected createResult<T>(
+    success: false,
+    data: undefined,
+    options?: {
+      error?: string;
+      reasoning?: string;
+      toolCalls?: Array<{ tool: string; input: Record<string, unknown>; output: unknown }>;
+      tokensUsed?: { input: number; output: number };
+      startTime: number;
+    }
+  ): AgentResult<T>;
+
+  /**
+   * Create a standard result (implementation)
    */
   protected createResult<T>(
     success: boolean,
@@ -529,15 +558,29 @@ export abstract class BaseAgent {
   ): AgentResult<T> {
     this.updateStatus(success ? 'idle' : 'error');
 
-    return {
+    const result: AgentResult<T> = {
       success,
-      data,
-      error: options?.error,
-      reasoning: options?.reasoning,
-      toolCalls: options?.toolCalls,
-      tokensUsed: options?.tokensUsed,
       executionTimeMs: options?.startTime ? Date.now() - options.startTime : 0,
     };
+
+    // Only add optional properties if they have values (for exactOptionalPropertyTypes)
+    if (data !== undefined) {
+      result.data = data;
+    }
+    if (options?.error !== undefined) {
+      result.error = options.error;
+    }
+    if (options?.reasoning !== undefined) {
+      result.reasoning = options.reasoning;
+    }
+    if (options?.toolCalls !== undefined) {
+      result.toolCalls = options.toolCalls;
+    }
+    if (options?.tokensUsed !== undefined) {
+      result.tokensUsed = options.tokensUsed;
+    }
+
+    return result;
   }
 }
 

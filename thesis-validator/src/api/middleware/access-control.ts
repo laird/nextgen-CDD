@@ -5,7 +5,7 @@
  */
 
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthenticatedRequest, UserPayload } from './auth.js';
+import type { AuthenticatedRequest } from './auth.js';
 
 /**
  * Engagement access record

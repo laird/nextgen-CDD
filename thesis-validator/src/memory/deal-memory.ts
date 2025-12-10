@@ -145,16 +145,34 @@ export class DealMemory {
 
     // Create causal edge if parent specified
     if (request.parent_id && request.relationship) {
-      await this.addCausalEdge({
+      const edgeParams: {
+        source_id: string;
+        target_id: string;
+        relationship: CausalEdge['relationship'];
+        strength?: number;
+        reasoning?: string;
+      } = {
         source_id: request.parent_id,
         target_id: hypothesis.id,
         relationship: request.relationship,
-        strength: request.strength,
-        reasoning: request.reasoning,
-      });
+      };
+
+      if (request.strength !== undefined) {
+        edgeParams.strength = request.strength;
+      }
+      if (request.reasoning !== undefined) {
+        edgeParams.reasoning = request.reasoning;
+      }
+
+      await this.addCausalEdge(edgeParams);
     }
 
-    return { ...hypothesis, embedding };
+    if (embedding !== undefined) {
+      // Create a new Float32Array to ensure correct buffer type
+      const embedArray = new Float32Array(embedding);
+      return { ...hypothesis, embedding: embedArray };
+    }
+    return hypothesis;
   }
 
   /**
@@ -164,11 +182,13 @@ export class DealMemory {
     const result = await this.client.get(this.namespaces.hypotheses, id);
     if (!result) return null;
 
+    // Create a new Float32Array to ensure correct buffer type
+    const embedding = new Float32Array(result.vector instanceof Float32Array ? result.vector : result.vector);
     return {
       id: result.id,
       type: result.metadata['type'] as HypothesisNode['type'],
       content: result.content ?? '',
-      embedding: result.vector instanceof Float32Array ? result.vector : new Float32Array(result.vector),
+      embedding,
       confidence: result.metadata['confidence'] as number,
       status: result.metadata['status'] as HypothesisNode['status'],
       metadata: {
@@ -321,13 +341,28 @@ export class DealMemory {
     request: CreateEvidenceRequest,
     embedding?: Float32Array
   ): Promise<EvidenceNode> {
-    const evidence = createEvidenceNode({
+    const evidenceParams: {
+      content: string;
+      source: EvidenceNode['source'];
+      sentiment?: EvidenceNode['sentiment'];
+      hypothesis_ids?: string[];
+      tags?: string[];
+    } = {
       content: request.content,
       source: request.source,
-      sentiment: request.sentiment,
-      hypothesis_ids: request.hypothesis_ids,
-      tags: request.tags,
-    });
+    };
+
+    if (request.sentiment !== undefined) {
+      evidenceParams.sentiment = request.sentiment;
+    }
+    if (request.hypothesis_ids !== undefined) {
+      evidenceParams.hypothesis_ids = request.hypothesis_ids;
+    }
+    if (request.tags !== undefined) {
+      evidenceParams.tags = request.tags;
+    }
+
+    const evidence = createEvidenceNode(evidenceParams);
 
     await this.client.insert(this.namespaces.evidence, {
       id: evidence.id,
@@ -344,7 +379,12 @@ export class DealMemory {
       content: evidence.content,
     });
 
-    return { ...evidence, embedding };
+    if (embedding !== undefined) {
+      // Create a new Float32Array to ensure correct buffer type
+      const embedArray = new Float32Array(embedding);
+      return { ...evidence, embedding: embedArray };
+    }
+    return evidence;
   }
 
   /**
@@ -354,10 +394,12 @@ export class DealMemory {
     const result = await this.client.get(this.namespaces.evidence, id);
     if (!result) return null;
 
+    // Create a new Float32Array to ensure correct buffer type
+    const embedding = new Float32Array(result.vector instanceof Float32Array ? result.vector : result.vector);
     return {
       id: result.id,
       content: result.content ?? '',
-      embedding: result.vector instanceof Float32Array ? result.vector : new Float32Array(result.vector),
+      embedding,
       source: {
         type: result.metadata['source_type'] as EvidenceNode['source']['type'],
         url: result.metadata['source_url'] as string | undefined,

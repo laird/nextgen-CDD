@@ -125,7 +125,7 @@ export class InstitutionalMemory {
   ): Promise<ReflexionEpisode> {
     const episode = createReflexionEpisode(engagementId, request, agentId);
 
-    await this.client.reflexionStore(NAMESPACES.reflexions, {
+    const reflexionEntry = {
       session_id: episode.id,
       task_name: episode.task_type,
       outcome_score: episode.outcome_score,
@@ -138,10 +138,14 @@ export class InstitutionalMemory {
         key_learnings: episode.key_learnings,
         methodology_used: episode.methodology_used,
       },
-      embedding,
-    });
+      ...(embedding !== undefined && { embedding }),
+    };
+    await this.client.reflexionStore(NAMESPACES.reflexions, reflexionEntry);
 
-    return { ...episode, embedding };
+    if (embedding !== undefined) {
+      return { ...episode, embedding } as ReflexionEpisode;
+    }
+    return episode;
   }
 
   /**
@@ -188,7 +192,7 @@ export class InstitutionalMemory {
   ): Promise<SkillDefinition> {
     const skill = createSkillDefinition(request, createdBy);
 
-    await this.client.skillCreate(NAMESPACES.skills, {
+    const skillEntry = {
       name: skill.name,
       description: skill.description,
       parameters: skill.parameters.map((p) => ({
@@ -198,10 +202,14 @@ export class InstitutionalMemory {
       })),
       implementation: skill.implementation,
       category: skill.category,
-      embedding,
-    });
+      ...(embedding !== undefined && { embedding }),
+    };
+    await this.client.skillCreate(NAMESPACES.skills, skillEntry);
 
-    return { ...skill, embedding };
+    if (embedding !== undefined) {
+      return { ...skill, embedding } as SkillDefinition;
+    }
+    return skill;
   }
 
   /**
@@ -211,10 +219,11 @@ export class InstitutionalMemory {
     query: Float32Array,
     options: { top_k?: number; category?: string } = {}
   ): Promise<SearchResult[]> {
-    return this.client.skillSearch(NAMESPACES.skills, query, {
+    const searchOptions = {
       top_k: options.top_k ?? 5,
-      category_filter: options.category,
-    });
+      ...(options.category !== undefined && { category_filter: options.category }),
+    };
+    return this.client.skillSearch(NAMESPACES.skills, query, searchOptions);
   }
 
   /**
@@ -268,7 +277,9 @@ export class InstitutionalMemory {
    */
   async storePattern(pattern: Omit<DealPattern, 'id'>, embedding?: Float32Array): Promise<DealPattern> {
     const id = crypto.randomUUID();
-    const fullPattern: DealPattern = { id, ...pattern, embedding };
+    const fullPattern: DealPattern = embedding !== undefined
+      ? { id, ...pattern, embedding }
+      : { id, ...pattern };
 
     await this.client.insert(NAMESPACES.patterns, {
       id,
@@ -348,7 +359,9 @@ export class InstitutionalMemory {
     embedding?: Float32Array
   ): Promise<SectorKnowledge> {
     const id = crypto.randomUUID();
-    const fullKnowledge: SectorKnowledge = { id, ...knowledge, embedding };
+    const fullKnowledge: SectorKnowledge = embedding !== undefined
+      ? { id, ...knowledge, embedding }
+      : { id, ...knowledge };
 
     await this.client.insert(NAMESPACES.sectorKnowledge, {
       id,
@@ -418,7 +431,9 @@ export class InstitutionalMemory {
     embedding?: Float32Array
   ): Promise<MethodologyTemplate> {
     const id = crypto.randomUUID();
-    const fullMethodology: MethodologyTemplate = { id, ...methodology, embedding };
+    const fullMethodology: MethodologyTemplate = embedding !== undefined
+      ? { id, ...methodology, embedding }
+      : { id, ...methodology };
 
     await this.client.insert(NAMESPACES.methodologies, {
       id,

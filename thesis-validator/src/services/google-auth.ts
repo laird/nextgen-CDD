@@ -48,11 +48,24 @@ export class GoogleAuthService {
     this.projectId = config.projectId ?? process.env['GOOGLE_CLOUD_PROJECT'];
     this.region = config.region ?? process.env['GOOGLE_CLOUD_REGION'] ?? 'us-central1';
 
-    this.auth = new GoogleAuth({
+    const authOptions: {
+      scopes: string[];
+      keyFilename?: string;
+      projectId?: string;
+    } = {
       scopes: config.scopes ?? DEFAULT_SCOPES,
-      keyFilename: config.keyFilePath ?? process.env['GOOGLE_APPLICATION_CREDENTIALS'],
-      projectId: this.projectId,
-    });
+    };
+
+    const keyFilePath = config.keyFilePath ?? process.env['GOOGLE_APPLICATION_CREDENTIALS'];
+    if (keyFilePath !== undefined) {
+      authOptions.keyFilename = keyFilePath;
+    }
+
+    if (this.projectId !== undefined) {
+      authOptions.projectId = this.projectId;
+    }
+
+    this.auth = new GoogleAuth(authOptions);
   }
 
   /**

@@ -255,7 +255,7 @@ Output as JSON array:
       if (!speakerStatements[segment.speaker]) {
         speakerStatements[segment.speaker] = [];
       }
-      speakerStatements[segment.speaker].push(segment.text);
+      speakerStatements[segment.speaker]!.push(segment.text);
     }
 
     const prompt = `Analyze the following expert statements to identify areas of consensus and divergence:
@@ -428,9 +428,10 @@ Write a 2-3 paragraph synthesis that:
   }
 
   /**
-   * Get synthesizer tools
+   * Get synthesizer tools (currently unused but kept for potential future use)
    */
-  private getTools(): AgentTool[] {
+  // @ts-expect-error - Intentionally unused, kept for future use
+  private _getTools(): AgentTool[] {
     return [
       createTool(
         'search_transcripts',

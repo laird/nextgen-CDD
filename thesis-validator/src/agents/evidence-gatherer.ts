@@ -14,7 +14,7 @@ import type { EvidenceNode, EvidenceSentiment, EvidenceSourceType } from '../mod
 import { createEvidenceFoundEvent, createHypothesisUpdatedEvent } from '../models/events.js';
 import type { HypothesisStatus } from '../models/hypothesis.js';
 import { webSearch } from '../tools/web-search.js';
-import { scoreCredibility } from '../tools/credibility-scorer.js';
+import { scoreCredibility, type SourceMetadata } from '../tools/credibility-scorer.js';
 import {
   getAlphaVantageClient,
   gatherFinancialEvidence,
@@ -208,16 +208,29 @@ Be thorough but efficient - quality over quantity.`,
         }
 
         // Emit evidence found event
+        const eventData: {
+          content_preview: string;
+          source_type: string;
+          sentiment: string;
+          credibility_score: number;
+          hypothesis_id?: string;
+        } = {
+          content_preview: e.content.slice(0, 200),
+          source_type: e.source.type,
+          sentiment: e.sentiment,
+          credibility_score: e.source.credibility_score,
+        };
+
+        // Only add hypothesis_id if it exists
+        const firstHypothesisId = input.hypothesisIds?.[0];
+        if (firstHypothesisId !== undefined) {
+          eventData.hypothesis_id = firstHypothesisId;
+        }
+
         this.emitEvent(createEvidenceFoundEvent(
           this.context.engagementId,
           e.id,
-          {
-            hypothesis_id: input.hypothesisIds?.[0],
-            content_preview: e.content.slice(0, 200),
-            source_type: e.source.type,
-            sentiment: e.sentiment,
-            credibility_score: e.source.credibility_score,
-          },
+          eventData,
           this.config.id
         ));
       }
@@ -309,11 +322,20 @@ Output as JSON array of strings:
           seenUrls.add(result.url);
 
           // Score credibility
-          const credibilityResult = scoreCredibility({
-            url: result.url,
-            publicationType: this.inferPublicationType(result.url),
-            publishedDate: result.publishedDate ? new Date(result.publishedDate) : undefined,
-          }, result.content);
+          const credibilityMetadata: SourceMetadata = {};
+
+          // Only add properties if they have values (for exactOptionalPropertyTypes)
+          credibilityMetadata.url = result.url;
+
+          const pubType = this.inferPublicationType(result.url);
+          if (pubType !== undefined) {
+            credibilityMetadata.publicationType = pubType;
+          }
+          if (result.publishedDate !== undefined) {
+            credibilityMetadata.publishedDate = new Date(result.publishedDate);
+          }
+
+          const credibilityResult = scoreCredibility(credibilityMetadata, result.content);
 
           // Filter by minimum credibility
           if (credibilityResult.overall < minCredibility) continue;

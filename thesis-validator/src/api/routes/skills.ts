@@ -16,7 +16,9 @@ import {
   CreateSkillRequestSchema,
   skillTemplates,
   type SkillDefinition,
+  type Sector,
 } from '../../models/index.js';
+import { getEmbeddingService } from '../../tools/index.js';
 
 /**
  * Register skills routes
@@ -120,10 +122,10 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
    * Create new skill
    * POST /skills
    */
-  fastify.post(
+  fastify.post<{ Body: z.infer<typeof CreateSkillRequestSchema> }>(
     '/',
     {
-      preHandler: requireRole('admin', 'manager'),
+      preHandler: [requireRole('admin', 'manager') as any],
       schema: {
         body: CreateSkillRequestSchema,
       },
@@ -219,10 +221,17 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
    * Update skill
    * PATCH /skills/:skillId
    */
-  fastify.patch(
+  fastify.patch<{
+    Params: { skillId: string };
+    Body: {
+      description?: string;
+      implementation?: string;
+      tags?: string[];
+    };
+  }>(
     '/:skillId',
     {
-      preHandler: requireRole('admin', 'manager'),
+      preHandler: [requireRole('admin', 'manager') as any],
       schema: {
         body: z.object({
           description: z.string().optional(),
@@ -320,25 +329,43 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const { query, sector, deal_type, min_relevance, limit } = request.query;
 
       const institutionalMemory = getInstitutionalMemory();
+      const embeddingService = getEmbeddingService();
 
-      // Search for similar patterns
-      const patterns = await institutionalMemory.findSimilarPatterns(query, limit * 2);
+      // Generate embedding for the query
+      const queryEmbedding = await embeddingService.embed(query);
 
-      // Filter and map to comparables format
-      const comparables = patterns
-        .filter((p) => p.similarity >= min_relevance)
-        .filter((p) => !sector || p.pattern.metadata?.sector === sector)
-        .filter((p) => !deal_type || p.pattern.metadata?.deal_type === deal_type)
+      // Search for similar patterns using searchPatterns
+      const searchOptions: {
+        top_k: number;
+        sector?: Sector;
+        deal_type?: any;
+      } = {
+        top_k: limit * 2,
+      };
+      if (sector) {
+        searchOptions.sector = sector as Sector;
+      }
+      if (deal_type) {
+        searchOptions.deal_type = deal_type;
+      }
+      const searchResults = await institutionalMemory.searchPatterns(queryEmbedding, searchOptions);
+
+      // Filter by relevance and map to comparables format
+      const comparables = searchResults
+        .filter((result) => result.score >= min_relevance)
         .slice(0, limit)
-        .map((p) => ({
-          pattern_id: p.pattern.id,
-          description: p.pattern.description,
-          thesis_pattern: p.pattern.thesis_pattern,
-          similarity: p.similarity,
-          outcomes: p.pattern.outcomes,
-          lessons_learned: p.pattern.lessons_learned,
-          sector: p.pattern.metadata?.sector,
-          deal_type: p.pattern.metadata?.deal_type,
+        .map((result) => ({
+          pattern_id: result.id,
+          description: result.content ?? '',
+          thesis_pattern: result.metadata['thesis_pattern'] as string,
+          similarity: result.score,
+          outcomes: {
+            outcome: result.metadata['outcome'] as string,
+            outcome_score: result.metadata['outcome_score'] as number,
+          },
+          lessons_learned: [],
+          sector: result.metadata['sector'] as string,
+          deal_type: result.metadata['deal_type'] as string,
         }));
 
       reply.send({
@@ -363,9 +390,9 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const { sector } = request.params;
 
       const institutionalMemory = getInstitutionalMemory();
-      const knowledge = await institutionalMemory.getSectorKnowledge(sector);
+      const knowledge = await institutionalMemory.getSectorKnowledge(sector as Sector);
 
-      if (!knowledge) {
+      if (!knowledge || knowledge.length === 0) {
         reply.status(404).send({
           error: 'Not Found',
           message: 'Sector knowledge not found',
@@ -405,11 +432,34 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const { task_type, sector, limit } = request.query;
 
       const institutionalMemory = getInstitutionalMemory();
-      const methodologies = await institutionalMemory.getMethodologySuggestions(
-        task_type,
-        sector,
-        limit
-      );
+      const embeddingService = getEmbeddingService();
+
+      // Generate embedding for the task type
+      const taskEmbedding = await embeddingService.embed(task_type);
+
+      // Search for methodology templates
+      const methodologyOptions: {
+        top_k: number;
+        category?: string;
+      } = {
+        top_k: limit,
+      };
+      if (sector) {
+        methodologyOptions.category = sector;
+      }
+      const searchResults = await institutionalMemory.searchMethodologies(taskEmbedding, methodologyOptions);
+
+      // Map to methodologies format
+      const methodologies = searchResults.map((result) => ({
+        id: result.id,
+        name: result.metadata['name'] as string,
+        description: result.content ?? '',
+        category: result.metadata['category'] as string,
+        success_rate: result.metadata['success_rate'] as number,
+        usage_count: result.metadata['usage_count'] as number,
+        average_duration_hours: result.metadata['average_duration_hours'] as number,
+        relevance_score: result.score,
+      }));
 
       reply.send({
         methodologies,

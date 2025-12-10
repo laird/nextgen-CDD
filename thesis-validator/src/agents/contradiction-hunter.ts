@@ -473,9 +473,10 @@ Output as JSON:
   }
 
   /**
-   * Get hunter tools
+   * Get hunter tools (currently unused but kept for potential future use)
    */
-  private getTools(): AgentTool[] {
+  // @ts-expect-error - Intentionally unused, kept for future use
+  private _getTools(): AgentTool[] {
     return [
       createTool(
         'adversarial_search',
@@ -527,9 +528,10 @@ Output as JSON:
           const embedding = await this.embed(input['thesis_pattern'] as string);
           const results = await this.context.institutionalMemory.retrieveReflexions(embedding, {
             top_k: 5,
-            filters: { was_successful: false },
           });
-          return { results };
+          // Filter by was_successful in memory since the API doesn't support filters
+          const filteredResults = results.filter(r => r.metadata['was_successful'] === false);
+          return { results: filteredResults };
         }
       ),
     ];

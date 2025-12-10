@@ -101,7 +101,10 @@ export class ReflexionStore {
       content: episode.self_critique,
     });
 
-    return { ...episode, embedding };
+    if (embedding !== undefined) {
+      return { ...episode, embedding: new Float32Array(embedding) };
+    }
+    return episode;
   }
 
   /**
@@ -259,7 +262,7 @@ export class ReflexionStore {
     const allResults = await this.retrieveSimilar(new Float32Array(1536), {
       top_k: 1000,
       min_score: -Infinity,
-      filters,
+      ...(filters !== undefined && { filters }),
     });
 
     const episodes = allResults.map(this.resultToEpisode.bind(this));
@@ -343,7 +346,7 @@ export class ReflexionStore {
    * Find similar past experiences for a new task
    */
   async findSimilarExperiences(
-    taskDescription: string,
+    _taskDescription: string,
     taskEmbedding: Float32Array,
     context: {
       sector?: string;

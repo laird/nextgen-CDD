@@ -189,7 +189,11 @@ export class MarketIntelligence {
    */
   async storeSignal(signal: Omit<MarketSignal, 'id'>, embedding?: Float32Array): Promise<MarketSignal> {
     const id = crypto.randomUUID();
-    const fullSignal: MarketSignal = { id, ...signal, embedding };
+    const fullSignal: MarketSignal = {
+      id,
+      ...signal,
+      ...(embedding !== undefined && { embedding })
+    };
 
     await this.client.insert(this.getNamespace(signal.sector), {
       id,
@@ -316,7 +320,11 @@ export class MarketIntelligence {
     embedding?: Float32Array
   ): Promise<CompetitiveIntelligence> {
     const id = crypto.randomUUID();
-    const fullIntel: CompetitiveIntelligence = { id, ...intel, embedding };
+    const fullIntel: CompetitiveIntelligence = {
+      id,
+      ...intel,
+      ...(embedding !== undefined && { embedding })
+    };
 
     await this.client.insert(`${this.namespacePrefix}_competitive`, {
       id,
@@ -377,7 +385,11 @@ export class MarketIntelligence {
     embedding?: Float32Array
   ): Promise<RegulatorySignal> {
     const id = crypto.randomUUID();
-    const fullSignal: RegulatorySignal = { id, ...signal, embedding };
+    const fullSignal: RegulatorySignal = {
+      id,
+      ...signal,
+      ...(embedding !== undefined && { embedding })
+    };
 
     await this.client.insert(`${this.namespacePrefix}_regulatory`, {
       id,
@@ -456,7 +468,7 @@ export class MarketIntelligence {
       return bTime - aTime;
     });
 
-    return results.map((r) => ({
+    return results.map((r): MarketSignal => ({
       id: r.id,
       type: r.metadata['type'] as MarketSignalType,
       sector: r.metadata['sector'] as Sector,
@@ -464,20 +476,22 @@ export class MarketIntelligence {
       content: r.content ?? '',
       source: {
         name: r.metadata['source_name'] as string,
-        url: r.metadata['source_url'] as string | undefined,
+        ...(r.metadata['source_url'] !== undefined && { url: r.metadata['source_url'] as string }),
         credibility: r.metadata['credibility'] as SourceCredibility,
         credibility_score: r.metadata['credibility_score'] as number,
       },
       entities: (r.metadata['entities'] as string[]) ?? [],
-      sentiment: r.metadata['sentiment_score'] !== undefined ? {
-        score: r.metadata['sentiment_score'] as number,
-        label: r.metadata['sentiment_label'] as 'positive' | 'negative' | 'neutral',
-        confidence: 0.8,
-      } : undefined,
+      ...(r.metadata['sentiment_score'] !== undefined && {
+        sentiment: {
+          score: r.metadata['sentiment_score'] as number,
+          label: r.metadata['sentiment_label'] as 'positive' | 'negative' | 'neutral',
+          confidence: 0.8,
+        }
+      }),
       relevance_tags: (r.metadata['relevance_tags'] as string[]) ?? [],
       published_at: r.metadata['published_at'] as number,
       retrieved_at: r.metadata['retrieved_at'] as number,
-      expires_at: r.metadata['expires_at'] as number | undefined,
+      ...(r.metadata['expires_at'] !== undefined && { expires_at: r.metadata['expires_at'] as number }),
     }));
   }
 

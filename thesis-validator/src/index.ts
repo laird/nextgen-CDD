@@ -78,10 +78,28 @@ main().catch((error) => {
   process.exit(1);
 });
 
-// Re-export everything for library usage
+// Re-export everything for library usage (excluding duplicate exports)
 export * from './models/index.js';
-export * from './memory/index.js';
 export * from './tools/index.js';
 export * from './agents/index.js';
 export * from './workflows/index.js';
 export * from './api/index.js';
+
+// Selectively re-export from memory to avoid duplicates
+export {
+  DealMemory,
+  createDealMemory,
+  InstitutionalMemory,
+  getInstitutionalMemory,
+  setInstitutionalMemory,
+  MarketIntelligence,
+  getMarketIntelligence,
+  setMarketIntelligence,
+  initializeMemorySystems,
+  getMemoryStats,
+  RuvectorClient,
+  ReflexionStore,
+  getReflexionStore,
+  SkillLibrary,
+  getSkillLibrary,
+} from './memory/index.js';

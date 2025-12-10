@@ -169,24 +169,6 @@ export class LLMProvider {
     console.log(`[LLMProvider] Initialized Vertex AI client for project: ${projectId}, region: ${region}`);
   }
 
-  /**
-   * Get the active client
-   */
-  private getClient(): Anthropic | AnthropicVertex {
-    if (!this.initialized) {
-      throw new Error('LLM Provider not initialized. Call initialize() first.');
-    }
-
-    if (this.config.provider === 'anthropic' && this.anthropicClient) {
-      return this.anthropicClient;
-    }
-
-    if (this.config.provider === 'vertex-ai' && this.vertexClient) {
-      return this.vertexClient;
-    }
-
-    throw new Error('No LLM client available');
-  }
 
   /**
    * Create a message using the configured LLM provider
@@ -196,25 +178,45 @@ export class LLMProvider {
       await this.initialize();
     }
 
-    const client = this.getClient();
-
-    const response = await client.messages.create({
+    const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: request.model,
       max_tokens: request.maxTokens,
       temperature: request.temperature ?? this.config.temperature,
-      system: request.system,
       messages: request.messages as Anthropic.MessageParam[],
-      tools: request.tools as Anthropic.Tool[],
-    });
-
-    return {
-      content: response.content,
-      usage: {
-        input_tokens: response.usage.input_tokens,
-        output_tokens: response.usage.output_tokens,
-      },
-      stopReason: response.stop_reason,
     };
+
+    if (request.system !== undefined) {
+      params.system = request.system;
+    }
+
+    if (request.tools !== undefined && request.tools.length > 0) {
+      params.tools = request.tools as Anthropic.Tool[];
+    }
+
+    // Call the appropriate client based on provider type
+    if (this.config.provider === 'anthropic' && this.anthropicClient) {
+      const response = await this.anthropicClient.messages.create(params);
+      return {
+        content: response.content as Anthropic.ContentBlock[],
+        usage: {
+          input_tokens: response.usage.input_tokens,
+          output_tokens: response.usage.output_tokens,
+        },
+        stopReason: response.stop_reason,
+      };
+    } else if (this.config.provider === 'vertex-ai' && this.vertexClient) {
+      const response = await this.vertexClient.messages.create(params);
+      return {
+        content: response.content as unknown as Anthropic.ContentBlock[],
+        usage: {
+          input_tokens: response.usage.input_tokens,
+          output_tokens: response.usage.output_tokens,
+        },
+        stopReason: response.stop_reason,
+      };
+    } else {
+      throw new Error('No LLM client available');
+    }
   }
 
   /**
@@ -258,16 +260,30 @@ export function getLLMProviderConfig(): LLMProviderConfig {
   const providerEnv = process.env['LLM_PROVIDER'] ?? 'anthropic';
   const provider: LLMProviderType = providerEnv === 'vertex-ai' ? 'vertex-ai' : 'anthropic';
 
-  return {
+  const config: LLMProviderConfig = {
     provider,
     model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
     maxTokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] ?? '4096', 10),
     temperature: parseFloat(process.env['LLM_TEMPERATURE'] ?? '0.7'),
     timeout: parseInt(process.env['LLM_TIMEOUT'] ?? '60000', 10),
-    apiKey: process.env['ANTHROPIC_API_KEY'],
-    projectId: process.env['GOOGLE_CLOUD_PROJECT'],
-    region: process.env['GOOGLE_CLOUD_REGION'] ?? 'us-central1',
   };
+
+  const apiKey = process.env['ANTHROPIC_API_KEY'];
+  if (apiKey !== undefined) {
+    config.apiKey = apiKey;
+  }
+
+  const projectId = process.env['GOOGLE_CLOUD_PROJECT'];
+  if (projectId !== undefined) {
+    config.projectId = projectId;
+  }
+
+  const region = process.env['GOOGLE_CLOUD_REGION'];
+  if (region !== undefined) {
+    config.region = region;
+  }
+
+  return config;
 }
 
 /**

@@ -10,10 +10,8 @@
  * 6. Post-call synthesis
  */
 
-import type { AgentContext } from '../agents/base-agent.js';
 import {
   createExpertSynthesizerAgent,
-  type ExpertSynthesizerInput,
   type ExpertSynthesizerOutput,
 } from '../agents/index.js';
 import type { DealMemory } from '../memory/deal-memory.js';
@@ -154,7 +152,7 @@ export class ExpertCallWorkflow {
     synthesizer.setContext({
       engagementId: input.engagementId,
       dealMemory: input.dealMemory,
-      onEvent: input.onEvent,
+      ...(input.onEvent !== undefined && { onEvent: input.onEvent }),
     });
 
     // Get hypotheses for context
@@ -171,24 +169,31 @@ export class ExpertCallWorkflow {
     const relevantContext = await this.getRelevantContext(input, chunk);
 
     // Check for contradictions
-    const contradictionAlerts = await this.checkContradictions(input, chunk, session);
+    const contradictionAlerts = await this.checkContradictions(chunk, session);
+
+    // Convert and validate insights to proper RealtimeInsight type
+    const validatedInsights: RealtimeInsight[] = realtimeResult.insights
+      .filter((i): i is RealtimeInsight => {
+        const type = i.type as string;
+        return type === 'key_point' || type === 'contradiction' || type === 'follow_up' || type === 'data_point';
+      });
 
     // Add insights to session
-    session.insights.push(...realtimeResult.insights);
+    session.insights.push(...validatedInsights);
 
     // Emit real-time insight event if significant insights found
-    if (realtimeResult.insights.length > 0) {
+    if (validatedInsights.length > 0) {
       this.emitEvent(input, createExpertCallInsightEvent(
         input.engagementId,
         input.callId,
         {
           speaker: chunk.speaker,
           transcript_chunk: chunk.text,
-          insights: realtimeResult.insights.map((i) => ({
+          insights: validatedInsights.map((i) => ({
             type: i.type,
             content: i.content,
             confidence: i.confidence,
-            related_hypothesis_id: i.relatedHypothesisId,
+            ...(i.relatedHypothesisId !== undefined && { related_hypothesis_id: i.relatedHypothesisId }),
           })),
           suggested_followups: realtimeResult.suggestedFollowups,
           relevant_evidence_ids: [],
@@ -197,7 +202,7 @@ export class ExpertCallWorkflow {
     }
 
     return {
-      insights: realtimeResult.insights,
+      insights: validatedInsights,
       suggestedFollowups: realtimeResult.suggestedFollowups.slice(0, config.maxFollowUpsPerChunk),
       relevantContext,
       contradictionAlerts,
@@ -236,7 +241,6 @@ export class ExpertCallWorkflow {
    * Check for contradictions
    */
   private async checkContradictions(
-    input: ExpertCallInput,
     chunk: RealtimeChunk,
     session: ExpertCallSession
   ): Promise<RealtimeChunkResult['contradictionAlerts']> {
@@ -326,7 +330,7 @@ export class ExpertCallWorkflow {
     synthesizer.setContext({
       engagementId: input.engagementId,
       dealMemory: input.dealMemory,
-      onEvent: input.onEvent,
+      ...(input.onEvent !== undefined && { onEvent: input.onEvent }),
     });
 
     // Get hypotheses
@@ -337,7 +341,7 @@ export class ExpertCallWorkflow {
       callId: input.callId,
       segments,
       hypothesisIds: hypotheses.map((h) => h.id),
-      focusAreas: input.focusAreas,
+      ...(input.focusAreas !== undefined && { focusAreas: input.focusAreas }),
     });
 
     // Mark session as inactive

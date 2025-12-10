@@ -10,7 +10,6 @@
 
 import { BaseAgent, createTool } from './base-agent.js';
 import type { AgentContext, AgentResult, AgentTool } from './base-agent.js';
-import type { EngagementEvent } from '../models/events.js';
 import { createEvent, createResearchProgressEvent } from '../models/events.js';
 
 /**
@@ -322,7 +321,8 @@ Output as JSON with this structure:
     const executor = this.agentRegistry.get(step.agentType);
     if (!executor) {
       step.status = 'failed';
-      step.error = `No executor found for agent type: ${step.agentType}`;
+      const errorMsg = `No executor found for agent type: ${step.agentType}`;
+      step.error = errorMsg;
       return;
     }
 
@@ -336,8 +336,7 @@ Output as JSON with this structure:
         }
       }
 
-      const input = {
-        ...step.input,
+      const input: Record<string, unknown> = {
         dependencyResults,
         stepContext: {
           planId: plan.id,
@@ -346,6 +345,11 @@ Output as JSON with this structure:
         },
       };
 
+      // Add step input properties if they exist
+      if (step.input) {
+        Object.assign(input, step.input);
+      }
+
       const result = await executor(input, this.context!);
 
       if (result.success) {
@@ -353,7 +357,9 @@ Output as JSON with this structure:
         step.result = result.data;
       } else {
         step.status = 'failed';
-        step.error = result.error;
+        if (result.error !== undefined) {
+          step.error = result.error;
+        }
       }
     } catch (error) {
       step.status = 'failed';

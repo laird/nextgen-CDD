@@ -8,8 +8,8 @@
  * - Match thesis patterns to historical outcomes
  */
 
-import { BaseAgent, createTool } from './base-agent.js';
-import type { AgentResult, AgentTool } from './base-agent.js';
+import { BaseAgent } from './base-agent.js';
+import type { AgentResult } from './base-agent.js';
 import type { DealPattern, MethodologyTemplate } from '../memory/institutional-memory.js';
 import type { Sector, DealType } from '../models/index.js';
 import { createEvent } from '../models/events.js';
@@ -121,14 +121,14 @@ Provide actionable recommendations based on historical patterns.`,
     const startTime = Date.now();
 
     if (!this.context) {
-      return this.createResult(false, undefined, {
+      return this.createResult<ComparablesFinderOutput>(false, undefined, {
         error: 'No context set',
         startTime,
       });
     }
 
     if (!this.context.institutionalMemory) {
-      return this.createResult(false, undefined, {
+      return this.createResult<ComparablesFinderOutput>(false, undefined, {
         error: 'Institutional memory not available',
         startTime,
       });
@@ -182,7 +182,7 @@ Provide actionable recommendations based on historical patterns.`,
     } catch (error) {
       this.updateStatus('error', error instanceof Error ? error.message : 'Unknown error');
 
-      return this.createResult(false, undefined, {
+      return this.createResult<ComparablesFinderOutput>(false, undefined, {
         error: error instanceof Error ? error.message : 'Unknown error',
         startTime,
       });
@@ -248,8 +248,8 @@ Output as JSON:
 
     const patterns = await this.context!.institutionalMemory!.searchPatterns(embedding, {
       top_k: maxResults * 2,
-      sector: input.sector,
-      deal_type: input.dealType,
+      ...(input.sector !== undefined && { sector: input.sector }),
+      ...(input.dealType !== undefined && { deal_type: input.dealType }),
       outcome_weight: 0.3,
     });
 
@@ -426,96 +426,6 @@ Output as JSON array:
 
     const response = await this.callLLM(prompt);
     return this.parseJSON<string[]>(response.content) ?? [];
-  }
-
-  /**
-   * Get finder tools
-   */
-  private getTools(): AgentTool[] {
-    return [
-      createTool(
-        'search_patterns',
-        'Search for similar deal patterns',
-        {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Pattern query' },
-            sector: { type: 'string', description: 'Sector filter' },
-          },
-          required: ['query'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) return { results: [] };
-          const embedding = await this.embed(input['query'] as string);
-          const results = await this.context.institutionalMemory.searchPatterns(embedding, {
-            top_k: 10,
-            sector: input['sector'] as Sector | undefined,
-          });
-          return { results };
-        }
-      ),
-
-      createTool(
-        'search_frameworks',
-        'Search for applicable analytical frameworks',
-        {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Framework query' },
-            category: { type: 'string', description: 'Category filter' },
-          },
-          required: ['query'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) return { results: [] };
-          const embedding = await this.embed(input['query'] as string);
-          const results = await this.context.institutionalMemory.searchMethodologies(embedding, {
-            top_k: 5,
-            category: input['category'] as string | undefined,
-          });
-          return { results };
-        }
-      ),
-
-      createTool(
-        'get_sector_knowledge',
-        'Get sector-specific knowledge',
-        {
-          type: 'object',
-          properties: {
-            sector: { type: 'string', description: 'Sector name' },
-          },
-          required: ['sector'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) return { knowledge: [] };
-          const knowledge = await this.context.institutionalMemory.getSectorKnowledge(
-            input['sector'] as Sector
-          );
-          return { knowledge };
-        }
-      ),
-
-      createTool(
-        'search_reflexions',
-        'Search past learnings from similar situations',
-        {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Learning query' },
-          },
-          required: ['query'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) return { results: [] };
-          const embedding = await this.embed(input['query'] as string);
-          const results = await this.context.institutionalMemory.retrieveReflexions(embedding, {
-            top_k: 10,
-          });
-          return { results };
-        }
-      ),
-    ];
   }
 }
 

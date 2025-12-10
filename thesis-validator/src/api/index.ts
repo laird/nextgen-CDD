@@ -202,7 +202,7 @@ export async function createServer(config: Partial<APIConfig> = {}): Promise<Fas
   await registerResearchProgressWebSocket(fastify);
 
   // Global error handler
-  fastify.setErrorHandler((error, request, reply) => {
+  fastify.setErrorHandler((error, _request, reply) => {
     fastify.log.error(error);
 
     // Handle validation errors

@@ -88,7 +88,9 @@ function handleRedisMessage(channel: string, message: string): void {
   if (!match) return;
 
   const jobId = match[1];
-  broadcastToConnections(jobId, message);
+  if (jobId) {
+    broadcastToConnections(jobId, message);
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 /**
@@ -227,7 +227,7 @@ export function createEvent<T extends Record<string, unknown>>(
   metadata?: Record<string, unknown>
 ): EngagementEvent {
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     type,
     timestamp: Date.now(),
     engagement_id: engagementId,

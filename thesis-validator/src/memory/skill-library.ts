@@ -119,7 +119,10 @@ export class SkillLibrary {
       change_notes: 'Initial version',
     }]);
 
-    return { ...skill, embedding };
+    if (embedding !== undefined) {
+      return { ...skill, embedding: new Float32Array(embedding) };
+    }
+    return skill;
   }
 
   /**
@@ -135,7 +138,7 @@ export class SkillLibrary {
   ): Promise<SearchResult[]> {
     let results = await this.client.search(this.namespace, query, {
       top_k: (options.top_k ?? 5) * 2, // Over-fetch for filtering
-      filter: options.category ? { category: options.category } : undefined,
+      ...(options.category !== undefined && { filter: { category: options.category } }),
     });
 
     // Filter by minimum success rate
@@ -245,10 +248,16 @@ export class SkillLibrary {
     }
 
     try {
+      const context: SkillExecutionContext = {
+        ...(request.context?.engagement_id !== undefined && { engagement_id: request.context.engagement_id }),
+        ...(request.context?.hypothesis_id !== undefined && { hypothesis_id: request.context.hypothesis_id }),
+        ...(request.context?.additional_context !== undefined && { additional_context: request.context.additional_context }),
+      };
+
       const result = await this.executor(
         skill.implementation,
         params,
-        request.context ?? {}
+        context
       );
 
       // Record execution
@@ -381,7 +390,7 @@ export class SkillLibrary {
     const results = await this.client.search(this.namespace, new Float32Array(1536), {
       top_k: options.limit ?? 100,
       min_score: -Infinity,
-      filter: options.category ? { category: options.category } : undefined,
+      ...(options.category !== undefined && { filter: { category: options.category } }),
     });
 
     const skills = await Promise.all(results.map((r) => this.get(r.id)));

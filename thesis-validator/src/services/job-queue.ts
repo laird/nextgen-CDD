@@ -16,12 +16,22 @@ const REDIS_PASSWORD = process.env['REDIS_PASSWORD'];
  * Create Redis connection
  */
 function createRedisConnection(): Redis {
-  return new Redis({
+  const options: {
+    host: string;
+    port: number;
+    password?: string;
+    maxRetriesPerRequest: null;
+  } = {
     host: REDIS_HOST,
     port: REDIS_PORT,
-    password: REDIS_PASSWORD,
     maxRetriesPerRequest: null,
-  });
+  };
+
+  if (REDIS_PASSWORD !== undefined) {
+    options.password = REDIS_PASSWORD;
+  }
+
+  return new Redis(options);
 }
 
 /**
@@ -56,7 +66,6 @@ export class ResearchJobQueue {
           type: 'exponential',
           delay: 60000, // Start at 1 minute
         },
-        timeout: 1800000, // 30 minutes max
         removeOnComplete: {
           age: 86400 * 7, // Keep completed jobs for 7 days
           count: 100,

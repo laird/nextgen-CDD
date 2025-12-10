@@ -4,13 +4,13 @@
  * REST API endpoints for research workflow with job queue
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 import {
   StartResearchRequestSchema,
   type StartResearchRequest,
 } from '../../models/index.js';
-import { authHook, type AuthenticatedRequest } from '../middleware/index.js';
+import { authHook } from '../middleware/index.js';
 import { getResearchQueue } from '../../services/job-queue.js';
 import { getPool } from '../../db/index.js';
 
@@ -25,31 +25,20 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
    * Start research for engagement
    * POST /engagements/:id/research/start
    */
-  fastify.post(
+  fastify.post<{
+    Params: { id: string };
+    Body: StartResearchRequest;
+  }>(
     '/:id/research/start',
     {
       preHandler: authHook,
       schema: {
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-          required: ['id'],
-        },
         body: StartResearchRequestSchema,
       },
     },
-    async (
-      request: FastifyRequest<{
-        Params: { id: string };
-        Body: StartResearchRequest;
-      }>,
-      reply: FastifyReply
-    ) => {
+    async (request, reply) => {
       const { id: engagementId } = request.params;
       const { thesis, config } = request.body;
-      const user = (request as AuthenticatedRequest).user;
 
       // Verify engagement exists and user has access
       const engagementResult = await pool.query(
@@ -80,11 +69,31 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
         [jobId, engagementId, 'queued', JSON.stringify(config ?? {})]
       );
 
-      // Add to queue
+      // Add to queue - filter out undefined values to satisfy exactOptionalPropertyTypes
+      const jobConfig: {
+        maxHypotheses?: number;
+        enableDeepDive?: boolean;
+        confidenceThreshold?: number;
+        searchDepth?: 'quick' | 'standard' | 'thorough';
+      } = {};
+
+      if (config?.maxHypotheses !== undefined) {
+        jobConfig.maxHypotheses = config.maxHypotheses;
+      }
+      if (config?.enableDeepDive !== undefined) {
+        jobConfig.enableDeepDive = config.enableDeepDive;
+      }
+      if (config?.confidenceThreshold !== undefined) {
+        jobConfig.confidenceThreshold = config.confidenceThreshold;
+      }
+      if (config?.searchDepth !== undefined) {
+        jobConfig.searchDepth = config.searchDepth;
+      }
+
       await queue.addJob(jobId, {
         engagementId,
         thesis,
-        config: config ?? {},
+        config: jobConfig,
       });
 
       return reply.status(201).send({
@@ -98,25 +107,14 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
    * Get research job status
    * GET /engagements/:id/research/jobs/:jobId
    */
-  fastify.get(
+  fastify.get<{
+    Params: { id: string; jobId: string };
+  }>(
     '/:id/research/jobs/:jobId',
     {
       preHandler: authHook,
-      schema: {
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-            jobId: { type: 'string', format: 'uuid' },
-          },
-          required: ['id', 'jobId'],
-        },
-      },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string; jobId: string } }>,
-      reply: FastifyReply
-    ) => {
+    async (request, reply) => {
       const { id: engagementId, jobId } = request.params;
 
       // Get job from database
@@ -162,24 +160,14 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
    * List research jobs for engagement
    * GET /engagements/:id/research/jobs
    */
-  fastify.get(
+  fastify.get<{
+    Params: { id: string };
+  }>(
     '/:id/research/jobs',
     {
       preHandler: authHook,
-      schema: {
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-          required: ['id'],
-        },
-      },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
+    async (request, reply) => {
       const { id: engagementId } = request.params;
 
       const result = await pool.query(

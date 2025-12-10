@@ -145,11 +145,11 @@ export async function registerContradictionRoutes(fastify: FastifyInstance): Pro
 
       const contradiction = await contradictionRepo.create({
         engagementId,
-        hypothesisId,
-        evidenceId,
         description,
         severity,
-        bearCaseTheme,
+        ...(hypothesisId !== undefined && { hypothesisId }),
+        ...(evidenceId !== undefined && { evidenceId }),
+        ...(bearCaseTheme !== undefined && { bearCaseTheme }),
       });
 
       reply.status(201).send({ contradiction });

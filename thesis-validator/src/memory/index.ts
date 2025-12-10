@@ -107,10 +107,32 @@ export async function initializeMemorySystems(): Promise<void> {
  * Get aggregated memory statistics
  */
 export async function getMemoryStats(): Promise<{
-  institutional: Awaited<ReturnType<InstitutionalMemory['getStats']>>;
-  market: Awaited<ReturnType<MarketIntelligence['getStats']>>;
-  reflexions: Awaited<ReturnType<ReflexionStore['getStats']>>;
-  skills: Awaited<ReturnType<SkillLibrary['getStats']>>;
+  institutional: {
+    reflexion_count: number;
+    skill_count: number;
+    pattern_count: number;
+    sector_knowledge_count: number;
+    methodology_count: number;
+    entity_count: number;
+  };
+  market: {
+    total_signals: number;
+    by_sector: Record<string, number>;
+    competitive_intel_count: number;
+    regulatory_signals_count: number;
+  };
+  reflexions: {
+    total_episodes: number;
+    success_rate: number;
+    episodes_by_task_type: Record<string, number>;
+    episodes_by_sector: Record<string, number>;
+  };
+  skills: {
+    total_skills: number;
+    by_category: Record<string, number>;
+    average_success_rate: number;
+    total_executions: number;
+  };
 }> {
   const [institutional, market, reflexions, skills] = await Promise.all([
     getInstitutionalMemory().getStats(),

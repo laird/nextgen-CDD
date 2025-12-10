@@ -226,12 +226,31 @@ export function createSkillDefinition(
  * Helper function to create a reflexion episode
  */
 export function createReflexionEpisode(
-  engagementId: string,
+  _engagementId: string,
   request: StoreReflexionRequest,
   agentId?: string
 ): Omit<ReflexionEpisode, 'embedding'> {
   // Anonymize engagement ID for institutional memory
   const anonymizedEngagementId = crypto.randomUUID();
+
+  const metadata: {
+    sector: string;
+    deal_type: string;
+    thesis_pattern: string;
+    duration_hours: number;
+    created_at: number;
+    agent_id?: string;
+  } = {
+    sector: request.sector,
+    deal_type: request.deal_type,
+    thesis_pattern: request.thesis_pattern,
+    duration_hours: request.duration_hours,
+    created_at: Date.now(),
+  };
+
+  if (agentId !== undefined) {
+    metadata.agent_id = agentId;
+  }
 
   return {
     id: crypto.randomUUID(),
@@ -242,14 +261,7 @@ export function createReflexionEpisode(
     self_critique: request.self_critique,
     key_learnings: request.key_learnings,
     methodology_used: request.methodology_used,
-    metadata: {
-      sector: request.sector,
-      deal_type: request.deal_type,
-      thesis_pattern: request.thesis_pattern,
-      duration_hours: request.duration_hours,
-      created_at: Date.now(),
-      agent_id: agentId,
-    },
+    metadata,
   };
 }
 

@@ -80,7 +80,7 @@ export class WebSearchService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/search`, {
+      const httpResponse = await fetch(`${this.baseUrl}/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,11 +99,11 @@ export class WebSearchService {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Tavily API error: ${response.status} ${response.statusText}`);
+      if (!httpResponse.ok) {
+        throw new Error(`Tavily API error: ${httpResponse.status} ${httpResponse.statusText}`);
       }
 
-      const data = await response.json() as {
+      const data = await httpResponse.json() as {
         query: string;
         results: Array<{
           title: string;
@@ -117,20 +117,38 @@ export class WebSearchService {
         follow_up_questions?: string[];
       };
 
-      return {
+      const searchResponse: WebSearchResponse = {
         query: data.query,
-        results: data.results.map((r) => ({
-          title: r.title,
-          url: r.url,
-          content: r.content,
-          rawContent: r.raw_content,
-          score: r.score,
-          publishedDate: r.published_date,
-        })),
-        answer: data.answer,
+        results: data.results.map((r) => {
+          const result: WebSearchResult = {
+            title: r.title,
+            url: r.url,
+            content: r.content,
+            score: r.score,
+          };
+
+          if (r.raw_content !== undefined) {
+            result.rawContent = r.raw_content;
+          }
+
+          if (r.published_date !== undefined) {
+            result.publishedDate = r.published_date;
+          }
+
+          return result;
+        }),
         responseTime: Date.now() - startTime,
-        followUpQuestions: data.follow_up_questions,
       };
+
+      if (data.answer !== undefined) {
+        searchResponse.answer = data.answer;
+      }
+
+      if (data.follow_up_questions !== undefined) {
+        searchResponse.followUpQuestions = data.follow_up_questions;
+      }
+
+      return searchResponse;
     } catch (error) {
       console.error('[WebSearchService] Search error:', error);
       throw error;
