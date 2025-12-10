@@ -155,7 +155,7 @@ export async function createServer(config: Partial<APIConfig> = {}): Promise<Fas
     async (instance) => {
       await registerEvidenceRoutes(instance);
     },
-    { prefix: '/api/v1' }
+    { prefix: '/api/v1/engagements' }
   );
 
   await fastify.register(

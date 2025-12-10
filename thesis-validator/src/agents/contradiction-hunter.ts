@@ -13,6 +13,8 @@ import type { AgentResult, AgentTool } from './base-agent.js';
 import type { HypothesisNode, ContradictionNode } from '../models/index.js';
 import { createContradictionFoundEvent, createHypothesisUpdatedEvent } from '../models/events.js';
 import { webSearch } from '../tools/web-search.js';
+import { ContradictionRepository, type ContradictionSeverity } from '../repositories/contradiction-repository.js';
+import { HypothesisRepository } from '../repositories/hypothesis-repository.js';
 
 /**
  * Contradiction hunter input
@@ -47,6 +49,9 @@ export interface ContradictionHunterOutput {
  * Contradiction Hunter Agent implementation
  */
 export class ContradictionHunterAgent extends BaseAgent {
+  private contradictionRepo: ContradictionRepository;
+  private hypothesisRepo: HypothesisRepository;
+
   constructor() {
     super({
       id: 'contradiction_hunter',
@@ -80,6 +85,8 @@ For each contradiction found:
 - Note if it can be explained away or is fundamental
 - Suggest what additional diligence is needed`,
     });
+    this.contradictionRepo = new ContradictionRepository();
+    this.hypothesisRepo = new HypothesisRepository();
   }
 
   /**
@@ -216,13 +223,46 @@ For each contradiction found:
           const analysis = await this.analyzeContradiction(hypothesis.content, result.content);
 
           if (analysis.isContradiction && analysis.severity > 0.3) {
-            // Store contradiction
+            // Store contradiction in DealMemory (vector DB)
             const contradiction = await this.context!.dealMemory.addContradiction({
               evidence_id: crypto.randomUUID(),
               hypothesis_id: hypothesis.id,
               severity: analysis.severity,
               explanation: analysis.explanation,
             });
+
+            // Also persist to PostgreSQL for API access
+            try {
+              const severityCategory: ContradictionSeverity =
+                analysis.severity >= 0.7 ? 'high' :
+                analysis.severity >= 0.4 ? 'medium' : 'low';
+
+              // Check if hypothesis exists in PostgreSQL before including it
+              const hypothesisExists = await this.hypothesisRepo.getById(hypothesis.id);
+
+              await this.contradictionRepo.create({
+                engagementId: this.context!.engagementId,
+                // Only include hypothesisId if it exists in PostgreSQL
+                ...(hypothesisExists ? { hypothesisId: hypothesis.id } : {}),
+                evidenceId: contradiction.evidence_id,
+                description: analysis.explanation,
+                severity: severityCategory,
+                metadata: {
+                  numericSeverity: analysis.severity,
+                  sourceQuery: query,
+                  sourceUrl: result.url,
+                  // Store the in-memory hypothesis ID in metadata if not in PostgreSQL
+                  ...(!hypothesisExists ? { inMemoryHypothesisId: hypothesis.id } : {}),
+                },
+              });
+
+              if (!hypothesisExists) {
+                console.log(`[ContradictionHunter] Hypothesis ${hypothesis.id} not in PostgreSQL, stored in metadata`);
+              }
+            } catch (dbError) {
+              console.error('[ContradictionHunter] Failed to persist contradiction to PostgreSQL:', dbError);
+              // Continue - vector memory is still updated
+            }
 
             contradictions.push({
               hypothesisId: hypothesis.id,

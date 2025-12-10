@@ -10,7 +10,7 @@
 
 import { BaseAgent, createTool } from './base-agent.js';
 import type { AgentResult, AgentTool } from './base-agent.js';
-import type { EvidenceNode, EvidenceSentiment } from '../models/evidence.js';
+import type { EvidenceNode, EvidenceSentiment, EvidenceSourceType } from '../models/evidence.js';
 import { createEvidenceFoundEvent } from '../models/events.js';
 import { webSearch } from '../tools/web-search.js';
 import { scoreCredibility } from '../tools/credibility-scorer.js';
@@ -22,6 +22,8 @@ import {
   type CompanyOverview,
   type NewsArticle,
 } from '../tools/alphavantage-rest.js';
+import { EvidenceRepository } from '../repositories/evidence-repository.js';
+import { HypothesisRepository } from '../repositories/hypothesis-repository.js';
 
 /**
  * Evidence gatherer input
@@ -61,6 +63,9 @@ export interface EvidenceGathererOutput {
  * Evidence Gatherer Agent implementation
  */
 export class EvidenceGathererAgent extends BaseAgent {
+  private evidenceRepo: EvidenceRepository;
+  private hypothesisRepo: HypothesisRepository;
+
   constructor() {
     super({
       id: 'evidence_gatherer',
@@ -90,6 +95,8 @@ For each piece of evidence:
 
 Be thorough but efficient - quality over quantity.`,
     });
+    this.evidenceRepo = new EvidenceRepository();
+    this.hypothesisRepo = new HypothesisRepository();
   }
 
   /**
@@ -152,7 +159,7 @@ Be thorough but efficient - quality over quantity.`,
         await this.linkToHypotheses(evidence, input.hypothesisIds);
       }
 
-      // Store evidence in deal memory
+      // Store evidence in deal memory and PostgreSQL
       for (const e of evidence) {
         const embedding = await this.embed(e.content);
         await this.context.dealMemory.addEvidence({
@@ -162,6 +169,42 @@ Be thorough but efficient - quality over quantity.`,
           hypothesis_ids: input.hypothesisIds,
           tags: e.tags,
         }, embedding);
+
+        // Also persist to PostgreSQL for API access
+        try {
+          const savedEvidence = await this.evidenceRepo.create({
+            engagementId: this.context.engagementId,
+            content: e.content,
+            sourceType: e.source.type as EvidenceSourceType,
+            ...(e.source.url ? { sourceUrl: e.source.url } : {}),
+            ...(e.source.title ? { sourceTitle: e.source.title } : {}),
+            credibility: e.source.credibility_score,
+            sentiment: e.sentiment,
+            metadata: { tags: e.tags },
+            retrievedAt: new Date(e.source.retrieved_at),
+          });
+
+          // Link to hypotheses if any (only if hypothesis exists in PostgreSQL)
+          if (input.hypothesisIds) {
+            for (let i = 0; i < input.hypothesisIds.length; i++) {
+              const hypothesisId = input.hypothesisIds[i];
+              const relevanceScore = e.relevance.relevance_scores[i] ?? 0.5;
+              if (hypothesisId) {
+                // Check if hypothesis exists in PostgreSQL before linking
+                const hypothesisExists = await this.hypothesisRepo.getById(hypothesisId);
+                if (hypothesisExists) {
+                  await this.evidenceRepo.linkToHypothesis(savedEvidence.id, hypothesisId, relevanceScore);
+                } else {
+                  // Hypothesis not in PostgreSQL (in-memory only), skip linking
+                  console.log(`[EvidenceGatherer] Skipping hypothesis link - ID ${hypothesisId} not in PostgreSQL`);
+                }
+              }
+            }
+          }
+        } catch (dbError) {
+          console.error('[EvidenceGatherer] Failed to persist evidence to PostgreSQL:', dbError);
+          // Continue - vector memory is still updated
+        }
 
         // Emit evidence found event
         this.emitEvent(createEvidenceFoundEvent(
