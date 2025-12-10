@@ -14,10 +14,8 @@ import {
 import { getSkillLibrary, getInstitutionalMemory } from '../../memory/index.js';
 import {
   CreateSkillRequestSchema,
-  ExecuteSkillRequestSchema,
   skillTemplates,
   type SkillDefinition,
-  type SkillSearchResult,
 } from '../../models/index.js';
 
 /**
@@ -54,39 +52,35 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       }>,
       reply: FastifyReply
     ) => {
-      const { category, query, limit, offset } = request.query;
+      const { category, limit, offset } = request.query;
+      // Note: query parameter is accepted but not used for now (semantic search would need embeddings)
 
       const skillLibrary = getSkillLibrary();
 
-      let skills: SkillSearchResult[];
-
-      if (query) {
-        // Semantic search
-        skills = await skillLibrary.searchSkills(query, limit + offset);
-      } else {
-        // List all (would need a listAll method in production)
-        skills = await skillLibrary.searchSkills('', limit + offset);
-      }
-
-      // Filter by category if specified
+      // Build list options, only including category if provided
+      const listOptions: Parameters<typeof skillLibrary.list>[0] = {
+        limit: limit + offset,
+        sort_by: 'usage_count',
+      };
       if (category) {
-        skills = skills.filter((s) => s.skill.category === category);
+        listOptions.category = category as SkillDefinition['category'];
       }
+
+      const allSkills = await skillLibrary.list(listOptions);
 
       // Apply pagination
-      const total = skills.length;
-      const paginated = skills.slice(offset, offset + limit);
+      const total = allSkills.length;
+      const paginated = allSkills.slice(offset, offset + limit);
 
       reply.send({
-        skills: paginated.map((s) => ({
-          id: s.skill.id,
-          name: s.skill.name,
-          description: s.skill.description,
-          category: s.skill.category,
-          version: s.skill.version,
-          success_rate: s.skill.success_rate,
-          usage_count: s.skill.usage_count,
-          similarity_score: s.similarity_score,
+        skills: paginated.map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          description: skill.description,
+          category: skill.category,
+          version: skill.version,
+          success_rate: skill.success_rate,
+          usage_count: skill.usage_count,
         })),
         total,
         limit,
@@ -108,7 +102,7 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const { skillId } = request.params;
 
       const skillLibrary = getSkillLibrary();
-      const skill = await skillLibrary.getSkill(skillId);
+      const skill = await skillLibrary.get(skillId);
 
       if (!skill) {
         reply.status(404).send({
@@ -142,7 +136,7 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const skillRequest = request.body;
 
       const skillLibrary = getSkillLibrary();
-      const skill = await skillLibrary.registerSkill(skillRequest, user.id);
+      const skill = await skillLibrary.create(skillRequest, user.id);
 
       reply.status(201).send({
         skill,
@@ -187,7 +181,7 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const { parameters, context } = request.body;
 
       const skillLibrary = getSkillLibrary();
-      const skill = await skillLibrary.getSkill(skillId);
+      const skill = await skillLibrary.get(skillId);
 
       if (!skill) {
         reply.status(404).send({
@@ -198,7 +192,12 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       }
 
       try {
-        const result = await skillLibrary.executeSkill(skillId, parameters, context);
+        // execute() takes an ExecuteSkillRequest object
+        const result = await skillLibrary.execute({
+          skill_id: skillId,
+          parameters,
+          context,
+        });
 
         reply.send({
           skill_id: skillId,
@@ -247,7 +246,7 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
       const updates = request.body;
 
       const skillLibrary = getSkillLibrary();
-      const skill = await skillLibrary.getSkill(skillId);
+      const skill = await skillLibrary.get(skillId);
 
       if (!skill) {
         reply.status(404).send({
@@ -257,7 +256,14 @@ export async function registerSkillsRoutes(fastify: FastifyInstance): Promise<vo
         return;
       }
 
-      const updated = await skillLibrary.updateSkill(skillId, updates);
+      const user = (request as AuthenticatedRequest).user;
+      // refine() takes updates, refinedBy userId, and changeNotes
+      const updated = await skillLibrary.refine(
+        skillId,
+        updates,
+        user.id,
+        'Updated via API'
+      );
 
       reply.send({
         skill: updated,
