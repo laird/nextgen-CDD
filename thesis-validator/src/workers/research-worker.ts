@@ -82,20 +82,15 @@ async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
     // Initialize conductor
     const conductor = new ConductorAgent();
 
+    // Phase 1: Hypothesis Generation
     await job.updateProgress(20);
     await publishProgress(job.id!, 'phase_start', {
-      phase: 'initialization',
-      message: 'Initializing research agents',
+      phase: 'hypothesis_generation',
+      message: 'Building investment hypotheses',
       progress: 20,
     });
 
-    // Execute research workflow
-    await publishProgress(job.id!, 'phase_start', {
-      phase: 'research',
-      message: 'Executing research workflow',
-      progress: 30,
-    });
-
+    // Execute research workflow (runs all phases internally as a batch)
     const results = await conductor.executeResearchWorkflow({
       thesis,
       config: {
@@ -105,17 +100,57 @@ async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
       },
     });
 
+    // Phase complete with hypothesis count
+    await publishProgress(job.id!, 'phase_complete', {
+      phase: 'hypothesis_generation',
+      message: `Generated ${results.hypotheses.length} hypotheses`,
+      progress: 30,
+      hypothesis_count: results.hypotheses.length,
+    });
+
+    // Phase 2: Evidence Gathering
+    await job.updateProgress(40);
+    await publishProgress(job.id!, 'phase_start', {
+      phase: 'evidence_gathering',
+      message: 'Gathering supporting evidence',
+      progress: 40,
+    });
+
+    await publishProgress(job.id!, 'phase_complete', {
+      phase: 'evidence_gathering',
+      message: `Collected ${results.evidence.length} evidence items`,
+      progress: 55,
+      evidence_count: results.evidence.length,
+    });
+
+    // Phase 3: Contradiction Detection
+    await job.updateProgress(60);
+    await publishProgress(job.id!, 'phase_start', {
+      phase: 'contradiction_detection',
+      message: 'Analyzing for contradictions',
+      progress: 60,
+    });
+
+    await publishProgress(job.id!, 'phase_complete', {
+      phase: 'contradiction_detection',
+      message: `Found ${results.contradictions.length} potential contradictions`,
+      progress: 70,
+      contradiction_count: results.contradictions.length,
+    });
+
+    // Phase 4: Report Generation
+    await job.updateProgress(75);
+    await publishProgress(job.id!, 'phase_start', {
+      phase: 'report_generation',
+      message: 'Generating research report',
+      progress: 75,
+    });
+
     await job.updateProgress(80);
     await publishProgress(job.id!, 'phase_complete', {
-      phase: 'research',
+      phase: 'report_generation',
       message: `Research complete with ${results.confidence.toFixed(1)}% confidence`,
       progress: 80,
-      data: {
-        hypotheses_count: results.hypotheses.length,
-        evidence_count: results.evidence.length,
-        contradictions_count: results.contradictions.length,
-        confidence: results.confidence,
-      },
     });
 
     // Store results in database
