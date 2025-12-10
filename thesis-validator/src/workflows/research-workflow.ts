@@ -162,6 +162,7 @@ export class ResearchWorkflow {
       // Phase 2: Comparables search (optional)
       let comparablesResult: any = null;
       if (config.enableComparablesSearch) {
+        console.log(`[ResearchWorkflow] Starting Phase 2: Comparables search`);
         this.emitEvent(input, createEvent(
           'research.progress',
           input.engagement.id,
@@ -176,12 +177,18 @@ export class ResearchWorkflow {
         if (input.engagement.target_company.description) {
           targetCompanyInfo.description = input.engagement.target_company.description;
         }
-        comparablesResult = await agents.comparablesFinder.execute({
-          thesis: input.thesis.summary,
-          sector: input.engagement.target_company.sector,
-          dealType: input.engagement.deal_type,
-          targetCompany: targetCompanyInfo,
-        });
+        try {
+          comparablesResult = await agents.comparablesFinder.execute({
+            thesis: input.thesis.summary,
+            sector: input.engagement.target_company.sector,
+            dealType: input.engagement.deal_type,
+            targetCompany: targetCompanyInfo,
+          });
+          console.log(`[ResearchWorkflow] Phase 2 complete: Found ${comparablesResult?.data?.comparableDeals?.length ?? 0} comparable deals`);
+        } catch (phaseError) {
+          console.error(`[ResearchWorkflow] Phase 2 failed:`, phaseError);
+          // Continue with workflow - comparables are optional
+        }
       }
 
       // Phase 3: Evidence gathering
@@ -203,17 +210,22 @@ export class ResearchWorkflow {
 
       for (const hypothesis of keyHypotheses) {
         console.log(`[ResearchWorkflow] Gathering evidence for hypothesis: "${hypothesis.content.slice(0, 50)}..."`);
-        const evidenceResult = await agents.evidenceGatherer.execute({
-          query: hypothesis.content,
-          hypothesisIds: [hypothesis.id],
-          maxResults: config.maxEvidencePerHypothesis,
-        });
+        try {
+          const evidenceResult = await agents.evidenceGatherer.execute({
+            query: hypothesis.content,
+            hypothesisIds: [hypothesis.id],
+            maxResults: config.maxEvidencePerHypothesis,
+          });
 
-        if (evidenceResult.success && evidenceResult.data) {
-          console.log(`[ResearchWorkflow] Found ${evidenceResult.data.evidence?.length ?? 0} evidence items`);
-          evidenceResults.push(evidenceResult.data);
-        } else {
-          console.log(`[ResearchWorkflow] Evidence gathering failed for hypothesis: ${evidenceResult.error}`);
+          if (evidenceResult.success && evidenceResult.data) {
+            console.log(`[ResearchWorkflow] Found ${evidenceResult.data.evidence?.length ?? 0} evidence items`);
+            evidenceResults.push(evidenceResult.data);
+          } else {
+            console.log(`[ResearchWorkflow] Evidence gathering failed for hypothesis: ${evidenceResult.error}`);
+          }
+        } catch (evidenceError) {
+          console.error(`[ResearchWorkflow] Evidence gathering error for hypothesis:`, evidenceError);
+          // Continue with other hypotheses
         }
       }
       console.log(`[ResearchWorkflow] Phase 3 complete: Gathered evidence from ${evidenceResults.length} queries`);
@@ -229,11 +241,16 @@ export class ResearchWorkflow {
         ));
 
         agents.contradictionHunter.setContext(baseContext);
-        contradictionResult = await agents.contradictionHunter.execute({
-          hypotheses,
-          intensity: config.contradictionIntensity,
-        });
-        console.log(`[ResearchWorkflow] Phase 4 complete: Found ${contradictionResult?.data?.contradictions?.length ?? 0} contradictions`);
+        try {
+          contradictionResult = await agents.contradictionHunter.execute({
+            hypotheses,
+            intensity: config.contradictionIntensity,
+          });
+          console.log(`[ResearchWorkflow] Phase 4 complete: Found ${contradictionResult?.data?.contradictions?.length ?? 0} contradictions`);
+        } catch (contradictionError) {
+          console.error(`[ResearchWorkflow] Phase 4 failed:`, contradictionError);
+          // Continue with workflow - contradictions are optional
+        }
       }
 
       // Phase 5: Synthesis

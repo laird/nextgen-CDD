@@ -609,6 +609,12 @@ async function executeResearchWorkflowAsync(
     job.completedAt = Date.now();
     job.error = error instanceof Error ? error.message : 'Unknown error';
 
+    // Log the full error for debugging
+    console.error('[Research] Workflow failed:', error);
+    if (error instanceof Error && error.stack) {
+      console.error('[Research] Stack trace:', error.stack);
+    }
+
     // Emit failure event
     onEvent({
       id: crypto.randomUUID(),
