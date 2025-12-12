@@ -1,5 +1,7 @@
 # Local Development & Sandbox Deployment Guide
 
+**Last Updated:** 2025-12-11
+
 This guide provides step-by-step instructions for setting up the Thesis Validator application locally for development and testing before deploying to GCP.
 
 ## Table of Contents
