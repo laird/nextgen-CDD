@@ -134,7 +134,6 @@ steps:
             --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${_TAG} \
             --region ${_REGION} \
             --platform managed \
-            --allow-unauthenticated \
             --port 3000 \
             --vpc-connector tv-vpc-connector \
             --set-env-vars "NODE_ENV=production,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=${_REGION},CORS_ORIGINS=*" \
