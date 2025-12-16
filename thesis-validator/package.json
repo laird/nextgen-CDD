@@ -16,6 +16,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "db:init": "tsx scripts/init-db.ts",
+    "db:schema": "tsx scripts/create-schema.ts",
     "db:migrate": "tsx scripts/run-migrations.ts",
     "seed:skills": "tsx scripts/seed-skills.ts",
     "migrate:memory": "tsx scripts/migrate-memory.ts",
