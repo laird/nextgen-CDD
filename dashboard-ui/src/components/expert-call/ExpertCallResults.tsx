@@ -3,6 +3,7 @@
  * Presents analysis as a nicely formatted document
  */
 import { useState } from 'react';
+import Markdown from 'react-markdown';
 import {
   User,
   Clock,
@@ -16,7 +17,6 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
-  Scale,
   Minus,
 } from 'lucide-react';
 import type { ExpertCall, ExpertCallResults as ExpertCallResultsType, ThesisAlignment } from '../../types/api';
@@ -58,16 +58,14 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
 
   const { analysis, expertProfiles, keyInsights, consensusPoints, divergencePoints, followUpQuestions, synthesizedSummary, thesisAlignment } = results;
 
-  // Get thesis alignment styling
+  // Get thesis alignment styling - matches evidence sentiment pattern
   const getAlignmentStyle = (alignment: ThesisAlignment | undefined) => {
     if (!alignment) return { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400', icon: Minus, label: 'Not Assessed' };
-    switch (alignment.overall) {
-      case 'supports':
-        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', icon: ThumbsUp, label: 'Supports Thesis' };
-      case 'contradicts':
-        return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', icon: ThumbsDown, label: 'Contradicts Thesis' };
-      case 'mixed':
-        return { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', icon: Scale, label: 'Mixed Signals' };
+    switch (alignment.sentiment) {
+      case 'supporting':
+        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', icon: ThumbsUp, label: 'Supporting' };
+      case 'contradicting':
+        return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', icon: ThumbsDown, label: 'Contradicting' };
       default:
         return { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400', icon: Minus, label: 'Neutral' };
     }
@@ -81,9 +79,8 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
       {/* Thesis Alignment Banner */}
       {thesisAlignment && (
         <div className={`rounded-lg border p-4 ${alignmentStyle.bg} ${
-          thesisAlignment.overall === 'supports' ? 'border-green-300 dark:border-green-700' :
-          thesisAlignment.overall === 'contradicts' ? 'border-red-300 dark:border-red-700' :
-          thesisAlignment.overall === 'mixed' ? 'border-yellow-300 dark:border-yellow-700' :
+          thesisAlignment.sentiment === 'supporting' ? 'border-green-300 dark:border-green-700' :
+          thesisAlignment.sentiment === 'contradicting' ? 'border-red-300 dark:border-red-700' :
           'border-surface-300 dark:border-surface-600'
         }`}>
           <div className="flex items-start gap-4">
@@ -96,14 +93,14 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
                   {alignmentStyle.label}
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-sm font-medium ${alignmentStyle.bg} ${alignmentStyle.text}`}>
-                  Score: {thesisAlignment.score > 0 ? '+' : ''}{thesisAlignment.score.toFixed(1)}
+                  {Math.round(thesisAlignment.confidence * 100)}% confidence
                 </span>
               </div>
               <p className="text-sm text-surface-700 dark:text-surface-300 mb-3">
                 {thesisAlignment.reasoning}
               </p>
 
-              {/* Supporting & Challenging Points */}
+              {/* Supporting & Contradicting Points */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                 {thesisAlignment.supportingPoints.length > 0 && (
                   <div>
@@ -121,14 +118,14 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
                     </ul>
                   </div>
                 )}
-                {thesisAlignment.challengingPoints.length > 0 && (
+                {thesisAlignment.contradictingPoints.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-red-700 dark:text-red-400 mb-1 flex items-center gap-1">
                       <ThumbsDown className="h-3.5 w-3.5" />
-                      Challenging Points
+                      Contradicting Points
                     </h4>
                     <ul className="space-y-1">
-                      {thesisAlignment.challengingPoints.map((point, idx) => (
+                      {thesisAlignment.contradictingPoints.map((point, idx) => (
                         <li key={idx} className="text-xs text-surface-600 dark:text-surface-400 flex items-start gap-1">
                           <span className="mt-1.5 h-1 w-1 rounded-full bg-red-500 flex-shrink-0" />
                           {point}
@@ -179,10 +176,8 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
           <h4 className="text-sm font-semibold text-primary-800 dark:text-primary-200 mb-2">
             Executive Summary
           </h4>
-          <div className="text-sm text-surface-700 dark:text-surface-300 space-y-2 leading-relaxed">
-            {synthesizedSummary.split('\n').filter(p => p.trim()).map((paragraph, idx) => (
-              <p key={idx}>{paragraph}</p>
-            ))}
+          <div className="prose prose-sm dark:prose-invert max-w-none text-surface-700 dark:text-surface-300">
+            <Markdown>{synthesizedSummary}</Markdown>
           </div>
         </div>
       </div>

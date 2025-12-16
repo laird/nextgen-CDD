@@ -478,18 +478,19 @@ export interface EnhancedInsight {
 
 /**
  * Thesis alignment assessment for an expert call
+ * Matches evidence sentiment classification pattern
  */
 export interface ThesisAlignment {
-  /** Overall assessment: does this call support or contradict the investment thesis? */
-  overall: 'supports' | 'contradicts' | 'mixed' | 'neutral';
-  /** Score from -1 (strongly contradicts) to +1 (strongly supports) */
-  score: number;
+  /** Overall sentiment: does this call support or contradict the investment thesis? */
+  sentiment: 'supporting' | 'neutral' | 'contradicting';
+  /** Confidence in the sentiment classification (0-1) */
+  confidence: number;
   /** Brief explanation of the assessment */
   reasoning: string;
-  /** Points from this call that support the investment thesis */
+  /** Key points from this call that support the investment thesis */
   supportingPoints: string[];
-  /** Points from this call that challenge or contradict the thesis */
-  challengingPoints: string[];
+  /** Key points from this call that challenge or contradict the thesis */
+  contradictingPoints: string[];
 }
 
 export interface ExpertCallResults {

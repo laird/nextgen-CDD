@@ -28,19 +28,19 @@ export interface ExpertSynthesizerInput {
 }
 
 /**
- * Thesis alignment assessment
+ * Thesis alignment assessment - matches evidence sentiment pattern
  */
 export interface ThesisAlignment {
-  /** Overall assessment: does this call support or contradict the investment thesis? */
-  overall: 'supports' | 'contradicts' | 'mixed' | 'neutral';
-  /** Score from -1 (strongly contradicts) to +1 (strongly supports) */
-  score: number;
+  /** Overall sentiment: does this call support or contradict the investment thesis? */
+  sentiment: 'supporting' | 'neutral' | 'contradicting';
+  /** Confidence in the sentiment classification (0-1) */
+  confidence: number;
   /** Brief explanation of the assessment */
   reasoning: string;
-  /** Points from this call that support the investment thesis */
+  /** Key points from this call that support the investment thesis */
   supportingPoints: string[];
-  /** Points from this call that challenge or contradict the thesis */
-  challengingPoints: string[];
+  /** Key points from this call that challenge or contradict the thesis */
+  contradictingPoints: string[];
 }
 
 /**
@@ -389,6 +389,7 @@ Write a 2-3 paragraph synthesis that:
 
   /**
    * Assess how the expert call aligns with the investment thesis
+   * Uses the same sentiment classification pattern as evidence gathering
    */
   private async assessThesisAlignment(
     analysis: TranscriptAnalysis,
@@ -405,94 +406,125 @@ Write a 2-3 paragraph synthesis that:
       }
     }
 
-    // If no thesis statement and no hypotheses, return neutral assessment
-    if (!thesisStatement && hypotheses.length === 0) {
-      return {
-        overall: 'neutral',
-        score: 0,
-        reasoning: 'No investment thesis or hypotheses defined to assess alignment against.',
-        supportingPoints: [],
-        challengingPoints: [],
-      };
-    }
-
-    // Build the prompt with thesis and optionally hypotheses
-    let thesisSection = '';
+    // Build context section
+    let contextSection = '';
     if (thesisStatement) {
-      thesisSection = `INVESTMENT THESIS:
-${thesisStatement}
-
-`;
+      contextSection = `INVESTMENT THESIS: ${thesisStatement}\n\n`;
     }
     if (hypotheses.length > 0) {
-      thesisSection += `KEY HYPOTHESES TO VALIDATE:
-${hypotheses.map((h, i) => `${i + 1}. ${h.content}`).join('\n')}
-
-`;
+      contextSection += `KEY HYPOTHESES:\n${hypotheses.map((h) => `- ${h.content}`).join('\n')}\n\n`;
     }
 
-    const prompt = `Analyze how this expert interview aligns with the investment thesis.
+    // Prepare call content for classification
+    const callContent = `${analysis.summary}
 
-${thesisSection}EXPERT CALL SUMMARY:
-${analysis.summary}
-
-KEY INSIGHTS FROM CALL:
-${enhancedInsights.slice(0, 15).map((i) => `- [${i.insight.type}] ${i.insight.content} (Speaker: ${i.insight.speaker})`).join('\n')}
+KEY INSIGHTS:
+${enhancedInsights.slice(0, 10).map((i) => `- ${i.insight.content}`).join('\n')}
 
 KEY QUOTES:
-${analysis.keyQuotes.slice(0, 5).map((q) => `- "${q.text}" - ${q.speaker}`).join('\n')}
+${analysis.keyQuotes.slice(0, 3).map((q) => `"${q.text}" - ${q.speaker}`).join('\n')}`;
 
-Assess how this expert call aligns with the investment thesis:
-1. Does this call primarily SUPPORT, CONTRADICT, present MIXED signals, or is NEUTRAL to the thesis?
-2. What specific points from this call support the thesis?
-3. What specific points from this call challenge or contradict the thesis?
-4. Provide a numerical score from -1.0 (strongly contradicts) to +1.0 (strongly supports)
+    // Step 1: Classify overall sentiment (like evidence classification)
+    const sentiment = await this.classifyCallSentiment(callContent, contextSection);
 
-Output as JSON:
-{
-  "overall": "supports" | "contradicts" | "mixed" | "neutral",
-  "score": <number between -1 and 1>,
-  "reasoning": "<1-2 sentence explanation>",
-  "supportingPoints": ["point1", "point2", ...],
-  "challengingPoints": ["point1", "point2", ...]
-}`;
+    // Step 2: Extract supporting and contradicting points
+    const points = await this.extractAlignmentPoints(callContent, contextSection);
 
-    try {
-      const response = await this.callLLM(prompt, { temperature: 0.2 });
-      const result = this.parseJSON<ThesisAlignment>(response.content);
-
-      if (result && this.isValidThesisAlignment(result)) {
-        return result;
-      }
-    } catch {
-      // Fall through to default
+    // Calculate confidence based on clarity of the classification
+    const totalPoints = points.supporting.length + points.contradicting.length;
+    let confidence = 0.5;
+    if (totalPoints > 0) {
+      const dominantCount = Math.max(points.supporting.length, points.contradicting.length);
+      confidence = 0.5 + (dominantCount / totalPoints) * 0.4;
     }
 
-    // Default to mixed if parsing fails
     return {
-      overall: 'mixed',
-      score: 0,
-      reasoning: 'Unable to determine clear alignment from the expert call.',
-      supportingPoints: [],
-      challengingPoints: [],
+      sentiment,
+      confidence,
+      reasoning: this.generateAlignmentReasoning(sentiment, points),
+      supportingPoints: points.supporting,
+      contradictingPoints: points.contradicting,
     };
   }
 
   /**
-   * Validate thesis alignment structure
+   * Classify call sentiment - matches evidence sentiment classification pattern
    */
-  private isValidThesisAlignment(obj: unknown): obj is ThesisAlignment {
-    if (!obj || typeof obj !== 'object') return false;
-    const alignment = obj as Record<string, unknown>;
-    return (
-      ['supports', 'contradicts', 'mixed', 'neutral'].includes(alignment['overall'] as string) &&
-      typeof alignment['score'] === 'number' &&
-      alignment['score'] >= -1 &&
-      alignment['score'] <= 1 &&
-      typeof alignment['reasoning'] === 'string' &&
-      Array.isArray(alignment['supportingPoints']) &&
-      Array.isArray(alignment['challengingPoints'])
-    );
+  private async classifyCallSentiment(
+    callContent: string,
+    contextSection: string
+  ): Promise<'supporting' | 'neutral' | 'contradicting'> {
+    const prompt = `${contextSection}Classify the overall sentiment of this expert call as it relates to the investment thesis:
+
+${callContent.slice(0, 1500)}
+
+Respond with exactly one word: "supporting", "neutral", or "contradicting"`;
+
+    try {
+      const response = await this.callLLM(prompt, { temperature: 0.1, maxTokens: 20 });
+      const sentiment = response.content.trim().toLowerCase();
+
+      if (sentiment.includes('supporting')) return 'supporting';
+      if (sentiment.includes('contradicting')) return 'contradicting';
+      return 'neutral';
+    } catch {
+      return 'neutral';
+    }
+  }
+
+  /**
+   * Extract supporting and contradicting points from the call
+   */
+  private async extractAlignmentPoints(
+    callContent: string,
+    contextSection: string
+  ): Promise<{ supporting: string[]; contradicting: string[] }> {
+    const prompt = `${contextSection}Extract key points from this expert call that either support or contradict the investment thesis:
+
+${callContent.slice(0, 1500)}
+
+Output as JSON:
+{
+  "supporting": ["point 1", "point 2"],
+  "contradicting": ["point 1", "point 2"]
+}
+
+Only include the most important points (max 5 each). Be concise.`;
+
+    try {
+      const response = await this.callLLM(prompt, { temperature: 0.2 });
+      const result = this.parseJSON<{ supporting: string[]; contradicting: string[] }>(response.content);
+
+      if (result && Array.isArray(result.supporting) && Array.isArray(result.contradicting)) {
+        return {
+          supporting: result.supporting.slice(0, 5),
+          contradicting: result.contradicting.slice(0, 5),
+        };
+      }
+    } catch {
+      // Fall through
+    }
+
+    return { supporting: [], contradicting: [] };
+  }
+
+  /**
+   * Generate a brief reasoning summary
+   */
+  private generateAlignmentReasoning(
+    sentiment: 'supporting' | 'neutral' | 'contradicting',
+    points: { supporting: string[]; contradicting: string[] }
+  ): string {
+    const supportCount = points.supporting.length;
+    const contradictCount = points.contradicting.length;
+
+    if (sentiment === 'supporting') {
+      return `Expert feedback is predominantly positive with ${supportCount} supporting point${supportCount !== 1 ? 's' : ''}${contradictCount > 0 ? ` and ${contradictCount} concern${contradictCount !== 1 ? 's' : ''}` : ''}.`;
+    } else if (sentiment === 'contradicting') {
+      return `Expert feedback raises ${contradictCount} significant concern${contradictCount !== 1 ? 's' : ''}${supportCount > 0 ? ` despite ${supportCount} positive point${supportCount !== 1 ? 's' : ''}` : ''}.`;
+    } else {
+      return `Expert feedback is balanced with ${supportCount} supporting and ${contradictCount} contradicting points.`;
+    }
   }
 
   /**

@@ -1,7 +1,7 @@
 /**
  * Component for displaying expert call history
  */
-import { Clock, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Calendar, User, ThumbsUp, ThumbsDown, Scale, Minus } from 'lucide-react';
+import { Clock, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Calendar, User, ThumbsUp, ThumbsDown, Minus } from 'lucide-react';
 import type { ExpertCall, ExpertCallStatus, ExpertCallResults, ExpertProfile, ThesisAlignment } from '../../types/api';
 
 interface ExpertCallHistoryProps {
@@ -63,25 +63,20 @@ function getThesisAlignment(expertCall: ExpertCall): ThesisAlignment | undefined
   return results.thesisAlignment;
 }
 
-const alignmentConfig: Record<ThesisAlignment['overall'], {
+const alignmentConfig: Record<ThesisAlignment['sentiment'], {
   icon: React.ReactNode;
   color: string;
   label: string;
 }> = {
-  supports: {
+  supporting: {
     icon: <ThumbsUp className="h-3.5 w-3.5" />,
     color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
-    label: 'Supports',
+    label: 'Supporting',
   },
-  contradicts: {
+  contradicting: {
     icon: <ThumbsDown className="h-3.5 w-3.5" />,
     color: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
-    label: 'Contradicts',
-  },
-  mixed: {
-    icon: <Scale className="h-3.5 w-3.5" />,
-    color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
-    label: 'Mixed',
+    label: 'Contradicting',
   },
   neutral: {
     icon: <Minus className="h-3.5 w-3.5" />,
@@ -163,13 +158,34 @@ export function ExpertCallHistory({
           const thesisAlignment = getThesisAlignment(call);
           const isClickable = call.status === 'completed';
 
+          // Determine box color based on status and sentiment
+          const getBoxStyle = () => {
+            if (call.status === 'processing') {
+              return 'bg-surface-100 dark:bg-surface-700 border-l-4 border-l-surface-400';
+            }
+            if (call.status === 'failed') {
+              return 'bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500';
+            }
+            if (thesisAlignment) {
+              switch (thesisAlignment.sentiment) {
+                case 'supporting':
+                  return 'bg-green-50 dark:bg-green-900/20 border-l-4 border-l-green-500';
+                case 'contradicting':
+                  return 'bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500';
+                default:
+                  return 'bg-surface-50 dark:bg-surface-700/50 border-l-4 border-l-surface-400';
+              }
+            }
+            return 'bg-surface-50 dark:bg-surface-700/50 border-l-4 border-l-surface-400';
+          };
+
           return (
             <div
               key={call.id}
               onClick={() => isClickable && onSelect(call.id)}
-              className={`p-4 transition-colors ${
-                isSelected ? 'bg-primary-50 dark:bg-primary-900/20' : ''
-              } ${isClickable ? 'cursor-pointer hover:bg-surface-50 dark:hover:bg-surface-700/50' : ''}`}
+              className={`p-4 transition-colors ${getBoxStyle()} ${
+                isSelected ? 'ring-2 ring-primary-500' : ''
+              } ${isClickable ? 'cursor-pointer hover:opacity-80' : ''}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -203,15 +219,24 @@ export function ExpertCallHistory({
 
                   {/* Status and metadata */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
-                      {status.icon}
-                      {status.label}
-                    </span>
-                    {/* Thesis alignment badge */}
-                    {thesisAlignment && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${alignmentConfig[thesisAlignment.overall].color}`}>
-                        {alignmentConfig[thesisAlignment.overall].icon}
-                        {alignmentConfig[thesisAlignment.overall].label}
+                    {/* Only show processing/failed status badges */}
+                    {call.status === 'processing' && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                        {status.icon}
+                        Processing...
+                      </span>
+                    )}
+                    {call.status === 'failed' && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                        {status.icon}
+                        Failed
+                      </span>
+                    )}
+                    {/* Show sentiment and insight count for completed calls */}
+                    {call.status === 'completed' && thesisAlignment && (
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${alignmentConfig[thesisAlignment.sentiment].color} px-2 py-0.5 rounded-full`}>
+                        {alignmentConfig[thesisAlignment.sentiment].icon}
+                        {alignmentConfig[thesisAlignment.sentiment].label}
                       </span>
                     )}
                     {call.status === 'completed' && (

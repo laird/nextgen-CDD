@@ -894,16 +894,28 @@ export async function registerExpertCallRoutes(fastify: FastifyInstance): Promis
 async function getEngagementThesis(engagementId: string): Promise<string | undefined> {
   const pool = getPool();
   const { rows } = await pool.query(
-    'SELECT thesis, investment_thesis FROM engagements WHERE id = $1',
+    'SELECT thesis, config FROM engagements WHERE id = $1',
     [engagementId]
   );
 
   if (rows.length === 0) return undefined;
 
-  const engagement = rows[0] as { thesis?: { statement?: string }; investment_thesis?: { summary?: string } };
+  const row = rows[0] as { thesis?: unknown; config?: { thesis?: { statement?: string } } };
 
-  // Prefer thesis.statement (simpler format), fall back to investment_thesis.summary
-  return engagement.thesis?.statement || engagement.investment_thesis?.summary;
+  // Parse thesis if it's a string (JSONB might be returned as string)
+  const thesis = typeof row.thesis === 'string' ? JSON.parse(row.thesis) : row.thesis;
+
+  // Try thesis column first (stores {statement, submitted_at})
+  if (thesis && typeof thesis === 'object' && 'statement' in thesis) {
+    return (thesis as { statement: string }).statement;
+  }
+
+  // Fallback to config.thesis
+  if (row.config?.thesis?.statement) {
+    return row.config.thesis.statement;
+  }
+
+  return undefined;
 }
 
 /**
