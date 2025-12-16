@@ -298,6 +298,7 @@ ANTHROPIC_MAX_TOKENS=8192
 # =============================================================================
 # Required External APIs
 # =============================================================================
+EMBEDDING_PROVIDER=openai
 OPENAI_API_KEY=sk-your-openai-key-here
 TAVILY_API_KEY=tvly-your-tavily-key-here
 
@@ -731,6 +732,7 @@ lsof -i :3000
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-4-20250514` | Claude model to use |
 | `GOOGLE_CLOUD_PROJECT` | If vertex-ai | - | GCP project ID |
 | `GOOGLE_CLOUD_REGION` | If vertex-ai | `us-central1` | GCP region |
+| `EMBEDDING_PROVIDER` | No | `openai` | Embedding provider: `openai` or `vertex-ai` |
 | `OPENAI_API_KEY` | Yes | - | OpenAI API key for embeddings |
 | `TAVILY_API_KEY` | Yes | - | Tavily API key for web search |
 | `DATABASE_URL` | Yes | - | PostgreSQL connection string |
