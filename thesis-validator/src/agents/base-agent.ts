@@ -346,7 +346,7 @@ export abstract class BaseAgent {
 
     const messages: Array<{ role: 'user' | 'assistant'; content: string | Anthropic.ContentBlock[] }> = [];
     const toolCalls: Array<{ tool: string; input: Record<string, unknown>; output: unknown }> = [];
-    let totalTokens = { input: 0, output: 0 };
+    const totalTokens = { input: 0, output: 0 };
     const maxIterations = options?.maxIterations ?? 10;
 
     // Include conversation history if requested

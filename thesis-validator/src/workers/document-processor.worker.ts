@@ -4,7 +4,7 @@
  * BullMQ worker that processes uploaded documents
  */
 
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { readFile } from 'fs/promises';
 import { DocumentRepository, EvidenceRepository } from '../repositories/index.js';
@@ -138,8 +138,7 @@ export function startDocumentProcessorWorker(): Worker<DocumentJobData> {
 /**
  * Create document processing queue
  */
-export function createDocumentQueue(): import('bullmq').Queue<DocumentJobData> {
-  const { Queue } = require('bullmq') as typeof import('bullmq');
+export function createDocumentQueue(): Queue<DocumentJobData> {
   return new Queue<DocumentJobData>('document-processing', {
     connection: createRedisConnection(),
   });

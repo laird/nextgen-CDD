@@ -66,7 +66,7 @@ async function initializeRedis(): Promise<void> {
 
     // Set up Redis message handler
     redisSub.on('message', handleRedisMessage);
-  } catch (error) {
+  } catch (_error) {
     console.log('[ResearchProgress] Redis not available, using in-memory event emitter for progress events');
     redisAvailable = false;
     redisPub = null;
@@ -209,7 +209,7 @@ export async function registerResearchProgressWebSocket(fastify: FastifyInstance
           socket.close(4003, 'Invalid token');
           return;
         }
-      } catch (error) {
+      } catch (_error) {
         socket.close(4003, 'Invalid token');
         return;
       }

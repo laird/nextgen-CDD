@@ -355,7 +355,7 @@ export class RuvectorClient {
         score,
         metadata: entry.metadata as T,
         ...(entry.content !== undefined && { content: entry.content }),
-        ...(true && {
+        ...({
           certificate: {
             merkle_proof: createHash('sha256').update(id).digest('hex'),
             explanation: `Retrieved based on semantic similarity (${(similarity * 100).toFixed(1)}% match)`,
