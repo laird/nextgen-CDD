@@ -13,11 +13,11 @@ DROP TABLE IF EXISTS research_metrics CASCADE;
 DROP TABLE IF EXISTS stress_tests CASCADE;
 DROP TABLE IF EXISTS contradictions CASCADE;
 DROP TABLE IF EXISTS evidence_hypotheses CASCADE;
+DROP TABLE IF EXISTS evidence_items CASCADE;
 DROP TABLE IF EXISTS evidence CASCADE;
 DROP TABLE IF EXISTS documents CASCADE;
 DROP TABLE IF EXISTS hypothesis_edges CASCADE;
 DROP TABLE IF EXISTS hypotheses CASCADE;
-DROP TABLE IF EXISTS evidence_items CASCADE;
 DROP TABLE IF EXISTS research_jobs CASCADE;
 DROP TABLE IF EXISTS engagements CASCADE;
 DROP TABLE IF EXISTS schema_migrations CASCADE;
@@ -49,29 +49,56 @@ CREATE INDEX idx_engagements_deal_type ON engagements(deal_type);
 CREATE INDEX idx_engagements_created ON engagements(created_at DESC);
 
 -- =============================================================================
+-- RESEARCH JOBS (must come before hypotheses due to FK)
+-- =============================================================================
+CREATE TABLE research_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'partial')),
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  error_message TEXT,
+  config JSONB NOT NULL DEFAULT '{}'::jsonb,
+  results JSONB,
+  confidence_score FLOAT CHECK (confidence_score >= 0 AND confidence_score <= 100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_research_jobs_engagement ON research_jobs(engagement_id);
+CREATE INDEX idx_research_jobs_status ON research_jobs(status);
+CREATE INDEX idx_research_jobs_created ON research_jobs(created_at DESC);
+
+-- =============================================================================
 -- HYPOTHESES - Investment thesis hierarchy
 -- =============================================================================
 CREATE TABLE hypotheses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+  engagement_id UUID REFERENCES engagements(id) ON DELETE CASCADE,
   parent_id UUID REFERENCES hypotheses(id) ON DELETE SET NULL,
-  type VARCHAR(20) NOT NULL CHECK (type IN ('thesis', 'sub_thesis', 'assumption', 'evidence')),
-  content TEXT NOT NULL,
+  type VARCHAR(20) CHECK (type IN ('thesis', 'sub_thesis', 'assumption', 'evidence')),
+  content TEXT,
   confidence DECIMAL(3,2) DEFAULT 0.50 CHECK (confidence >= 0 AND confidence <= 1),
-  status VARCHAR(20) NOT NULL DEFAULT 'untested'
-    CHECK (status IN ('untested', 'supported', 'challenged', 'refuted')),
+  status VARCHAR(20) DEFAULT 'untested'
+    CHECK (status IN ('untested', 'supported', 'challenged', 'refuted', 'pending', 'validated', 'rejected', 'inconclusive')),
   importance VARCHAR(20) CHECK (importance IN ('critical', 'high', 'medium', 'low')),
   testability VARCHAR(20) CHECK (testability IN ('easy', 'moderate', 'difficult')),
   metadata JSONB DEFAULT '{}',
   created_by VARCHAR(100),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Legacy columns for research-worker compatibility
+  job_id UUID REFERENCES research_jobs(id) ON DELETE CASCADE,
+  statement TEXT,
+  priority INT CHECK (priority >= 1 AND priority <= 5),
+  validation_status VARCHAR(20) CHECK (validation_status IN ('pending', 'validated', 'rejected', 'inconclusive'))
 );
 
 CREATE INDEX idx_hypotheses_engagement ON hypotheses(engagement_id);
 CREATE INDEX idx_hypotheses_parent ON hypotheses(parent_id);
 CREATE INDEX idx_hypotheses_status ON hypotheses(status);
 CREATE INDEX idx_hypotheses_type ON hypotheses(type);
+CREATE INDEX idx_hypotheses_job ON hypotheses(job_id);
 
 -- Causal edges between hypotheses
 CREATE TABLE hypothesis_edges (
@@ -153,6 +180,26 @@ CREATE TABLE evidence_hypotheses (
 CREATE INDEX idx_ev_hyp_hypothesis ON evidence_hypotheses(hypothesis_id);
 
 -- =============================================================================
+-- EVIDENCE_ITEMS - Legacy table for research-worker compatibility
+-- =============================================================================
+CREATE TABLE evidence_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
+  job_id UUID NOT NULL REFERENCES research_jobs(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('supporting', 'contradicting', 'neutral')),
+  hypothesis TEXT NOT NULL,
+  content TEXT NOT NULL,
+  source_url TEXT,
+  source_type VARCHAR(50),
+  confidence FLOAT NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_evidence_items_engagement ON evidence_items(engagement_id);
+CREATE INDEX idx_evidence_items_job ON evidence_items(job_id);
+CREATE INDEX idx_evidence_items_type ON evidence_items(type);
+
+-- =============================================================================
 -- CONTRADICTIONS & STRESS TESTS
 -- =============================================================================
 CREATE TABLE contradictions (
@@ -210,27 +257,6 @@ CREATE INDEX idx_metrics_type ON research_metrics(metric_type);
 CREATE INDEX idx_metrics_recorded ON research_metrics(recorded_at);
 
 -- =============================================================================
--- RESEARCH JOBS (for async research tracking)
--- =============================================================================
-CREATE TABLE research_jobs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  engagement_id UUID NOT NULL REFERENCES engagements(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'partial')),
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  error_message TEXT,
-  config JSONB NOT NULL DEFAULT '{}'::jsonb,
-  results JSONB,
-  confidence_score FLOAT CHECK (confidence_score >= 0 AND confidence_score <= 100),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_research_jobs_engagement ON research_jobs(engagement_id);
-CREATE INDEX idx_research_jobs_status ON research_jobs(status);
-CREATE INDEX idx_research_jobs_created ON research_jobs(created_at DESC);
-
--- =============================================================================
 -- TRIGGERS - Auto-update timestamps
 -- =============================================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -277,8 +303,8 @@ CREATE TABLE schema_migrations (
   executed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Mark this schema as version 1.0
-INSERT INTO schema_migrations (filename) VALUES ('001_complete_schema_v1.0.sql');
+-- Mark this schema as version 1.1 (with legacy compatibility)
+INSERT INTO schema_migrations (filename) VALUES ('002_complete_schema_v1.1_legacy_compat.sql');
 
 -- =============================================================================
 -- Done!

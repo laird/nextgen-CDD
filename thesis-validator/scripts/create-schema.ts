@@ -61,15 +61,16 @@ async function main(): Promise<void> {
     console.log('✅ Schema created successfully!\n');
     console.log('Tables created:');
     console.log('  - engagements');
-    console.log('  - hypotheses');
+    console.log('  - research_jobs');
+    console.log('  - hypotheses (with legacy columns)');
     console.log('  - hypothesis_edges');
     console.log('  - documents');
     console.log('  - evidence');
     console.log('  - evidence_hypotheses');
+    console.log('  - evidence_items (legacy)');
     console.log('  - contradictions');
     console.log('  - stress_tests');
     console.log('  - research_metrics');
-    console.log('  - research_jobs');
     console.log('  - schema_migrations');
   } catch (error) {
     console.error('❌ Schema creation failed:', error);
