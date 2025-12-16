@@ -135,6 +135,7 @@ steps:
             --region ${_REGION} \
             --platform managed \
             --allow-unauthenticated \
+            --port 3000 \
             --vpc-connector tv-vpc-connector \
             --set-env-vars "NODE_ENV=production,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=${_REGION},CORS_ORIGINS=*" \
             --set-secrets "JWT_SECRET=thesis-validator-jwt-secret:latest,OPENAI_API_KEY=openai-api-key:latest,TAVILY_API_KEY=tavily-api-key:latest" \
