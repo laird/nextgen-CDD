@@ -174,18 +174,45 @@ REDIS_HOST=$(gcloud redis instances describe thesis-validator-redis \
 echo "Redis Host: $REDIS_HOST"
 ```
 
-### 2.3 Create Cloud SQL PostgreSQL Instance
+### 2.3 Set Up Private Services Access (Required for Cloud SQL)
+
+Cloud SQL with private IP requires a VPC peering connection to Google services:
 
 ```bash
-# Create Cloud SQL instance
+# Enable the Service Networking API
+gcloud services enable servicenetworking.googleapis.com
+
+# Create an IP range for private services
+gcloud compute addresses create google-managed-services-default \
+  --global \
+  --purpose=VPC_PEERING \
+  --prefix-length=16 \
+  --network=default
+
+# Create the private connection (this may take a few minutes)
+gcloud services vpc-peerings connect \
+  --service=servicenetworking.googleapis.com \
+  --ranges=google-managed-services-default \
+  --network=default
+```
+
+### 2.4 Create Cloud SQL PostgreSQL Instance
+
+```bash
+# Create Cloud SQL instance (Enterprise edition with private IP only)
+# For dev/staging: db-f1-micro or db-g1-small with --edition=ENTERPRISE
+# For production: db-custom-2-4096 or higher
 gcloud sql instances create thesis-validator-postgres \
   --database-version=POSTGRES_16 \
-  --tier=db-g1-small \
+  --edition=ENTERPRISE \
+  --tier=db-f1-micro \
   --region=$REGION \
   --storage-auto-increase \
   --storage-size=10GB \
   --availability-type=zonal \
-  --backup-start-time=03:00
+  --backup-start-time=03:00 \
+  --network=default \
+  --no-assign-ip
 
 # Create database
 gcloud sql databases create thesis_validator \
@@ -206,7 +233,7 @@ SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres \
 echo "SQL Connection: $SQL_CONNECTION"
 ```
 
-### 2.4 Create Secrets in Secret Manager
+### 2.5 Create Secrets in Secret Manager
 
 ```bash
 # JWT Secret (generate a secure one)
@@ -229,7 +256,7 @@ echo -n "$TAVILY_KEY" | \
   gcloud secrets create tavily-api-key --data-file=-
 ```
 
-### 2.5 Grant IAM Permissions
+### 2.6 Grant IAM Permissions
 
 ```bash
 # Get service account names
