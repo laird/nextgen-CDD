@@ -150,7 +150,7 @@ gcloud artifacts repositories create $SERVICE_NAME \
 ### 2.1 Create VPC Connector (Required for Cloud Run to access Redis)
 
 ```bash
-gcloud compute networks vpc-access connectors create thesis-validator-connector \
+gcloud compute networks vpc-access connectors create tv-vpc-connector \
   --region=$REGION \
   --range=10.8.0.0/28 \
   --network=default
@@ -325,7 +325,7 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances=10 \
   --timeout=300 \
   --concurrency=80 \
-  --vpc-connector=thesis-validator-connector \
+  --vpc-connector=tv-vpc-connector \
   --add-cloudsql-instances=${SQL_CONNECTION} \
   --set-env-vars="NODE_ENV=production" \
   --set-env-vars="LLM_PROVIDER=vertex-ai" \
@@ -646,7 +646,7 @@ gcloud alpha monitoring policies create \
 **Solution:**
 ```bash
 # Verify VPC connector exists and is healthy
-gcloud compute networks vpc-access connectors describe thesis-validator-connector \
+gcloud compute networks vpc-access connectors describe tv-vpc-connector \
   --region=$REGION
 
 # Ensure Cloud Run is using the connector
@@ -655,7 +655,7 @@ gcloud run services describe $SERVICE_NAME --region=$REGION \
 
 # Redeploy with VPC connector
 gcloud run services update $SERVICE_NAME \
-  --vpc-connector=thesis-validator-connector \
+  --vpc-connector=tv-vpc-connector \
   --region=$REGION
 ```
 
