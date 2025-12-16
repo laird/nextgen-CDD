@@ -5,6 +5,7 @@
  * Executes all SQL migration files using the runMigrations function from src/db/index.ts
  */
 
+import 'dotenv/config';
 import { runMigrations } from '../src/db/index.js';
 
 async function main(): Promise<void> {

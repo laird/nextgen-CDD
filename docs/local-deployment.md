@@ -117,10 +117,12 @@ cp .env.example .env
 #   - ANTHROPIC_API_KEY=sk-ant-...
 #   - OPENAI_API_KEY=sk-...
 #   - TAVILY_API_KEY=tvly-...
+#   - DISABLE_AUTH=true  (disables JWT for local dev)
 
 # 4. Install dependencies and initialize
 npm install
 npm run db:init
+npm run db:migrate
 npm run seed:skills
 
 # 5. Start backend
@@ -314,6 +316,13 @@ JWT_SECRET=local-development-secret-at-least-32-characters-long
 CORS_ORIGINS=http://localhost:5173
 
 # =============================================================================
+# Authentication (Development Only)
+# =============================================================================
+# Set to 'true' to disable JWT authentication in development
+# This creates a default admin user for all requests
+DISABLE_AUTH=true
+
+# =============================================================================
 # Vector Database (Ruvector)
 # =============================================================================
 RUVECTOR_PATH=./data/ruvector
@@ -337,6 +346,9 @@ ENABLE_REAL_TIME_EXPERT_SUPPORT=true
 ```bash
 # Initialize vector database schema
 npm run db:init
+
+# Create PostgreSQL tables (engagements, hypotheses, evidence, etc.)
+npm run db:migrate
 
 # Seed the skill library with default skills
 npm run seed:skills
@@ -726,6 +738,7 @@ lsof -i :3000
 | `API_PORT` | No | `3000` | API server port |
 | `API_HOST` | No | `0.0.0.0` | API server host |
 | `JWT_SECRET` | Yes | - | JWT signing secret (32+ chars) |
+| `DISABLE_AUTH` | No | `false` | Set to `true` to disable JWT auth (dev only) |
 | `CORS_ORIGINS` | No | `*` | Allowed CORS origins |
 | `RUVECTOR_PATH` | No | `./data/ruvector` | Vector store path |
 | `ENABLE_REFLEXION_MEMORY` | No | `true` | Enable agent reflection |
