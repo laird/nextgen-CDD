@@ -889,6 +889,24 @@ export async function registerExpertCallRoutes(fastify: FastifyInstance): Promis
 }
 
 /**
+ * Fetch the investment thesis statement from engagement
+ */
+async function getEngagementThesis(engagementId: string): Promise<string | undefined> {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    'SELECT thesis, investment_thesis FROM engagements WHERE id = $1',
+    [engagementId]
+  );
+
+  if (rows.length === 0) return undefined;
+
+  const engagement = rows[0] as { thesis?: { statement?: string }; investment_thesis?: { summary?: string } };
+
+  // Prefer thesis.statement (simpler format), fall back to investment_thesis.summary
+  return engagement.thesis?.statement || engagement.investment_thesis?.summary;
+}
+
+/**
  * Process expert call transcript asynchronously and update repository
  */
 async function processExpertCallAsync(
@@ -919,6 +937,9 @@ async function processExpertCallAsync(
     // Get deal memory for the engagement
     const dealMemory = await createDealMemory(engagementId);
 
+    // Get investment thesis for alignment assessment
+    const thesisStatement = await getEngagementThesis(engagementId);
+
     // Execute the workflow
     const result = await processExpertCallTranscript({
       engagementId,
@@ -926,6 +947,7 @@ async function processExpertCallAsync(
       dealMemory,
       segments,
       ...(focusAreas ? { focusAreas } : {}),
+      ...(thesisStatement ? { thesisStatement } : {}),
     });
 
     // Mark as completed with results and publish completed event

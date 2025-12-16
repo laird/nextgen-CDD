@@ -80,6 +80,8 @@ export interface ExpertCallInput {
   dealMemory: DealMemory;
   hypotheses?: HypothesisNode[];
   focusAreas?: string[];
+  /** Investment thesis statement for alignment assessment */
+  thesisStatement?: string;
   config?: Partial<ExpertCallConfig>;
   onEvent?: (event: EngagementEvent) => void;
 }
@@ -342,6 +344,7 @@ export class ExpertCallWorkflow {
       segments,
       hypothesisIds: hypotheses.map((h) => h.id),
       ...(input.focusAreas !== undefined && { focusAreas: input.focusAreas }),
+      ...(input.thesisStatement !== undefined && { thesisStatement: input.thesisStatement }),
     });
 
     // Mark session as inactive

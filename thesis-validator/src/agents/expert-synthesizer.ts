@@ -23,6 +23,24 @@ export interface ExpertSynthesizerInput {
   segments: TranscriptSegment[];
   hypothesisIds?: string[];
   focusAreas?: string[];
+  /** Investment thesis statement for alignment assessment */
+  thesisStatement?: string;
+}
+
+/**
+ * Thesis alignment assessment
+ */
+export interface ThesisAlignment {
+  /** Overall assessment: does this call support or contradict the investment thesis? */
+  overall: 'supports' | 'contradicts' | 'mixed' | 'neutral';
+  /** Score from -1 (strongly contradicts) to +1 (strongly supports) */
+  score: number;
+  /** Brief explanation of the assessment */
+  reasoning: string;
+  /** Points from this call that support the investment thesis */
+  supportingPoints: string[];
+  /** Points from this call that challenge or contradict the thesis */
+  challengingPoints: string[];
 }
 
 /**
@@ -40,6 +58,7 @@ export interface ExpertSynthesizerOutput {
   divergencePoints: string[];
   followUpQuestions: string[];
   synthesizedSummary: string;
+  thesisAlignment: ThesisAlignment;
 }
 
 /**
@@ -143,6 +162,14 @@ Be precise with attributions - who said what.`,
         divergence
       );
 
+      // Assess thesis alignment
+      const thesisAlignment = await this.assessThesisAlignment(
+        analysis,
+        enhancedInsights,
+        input.hypothesisIds ?? [],
+        input.thesisStatement
+      );
+
       // Emit call insights event
       this.emitEvent(createEvent(
         'expert_call.ended',
@@ -166,6 +193,7 @@ Be precise with attributions - who said what.`,
         divergencePoints: divergence,
         followUpQuestions,
         synthesizedSummary,
+        thesisAlignment,
       }, {
         reasoning: `Processed ${input.segments.length} transcript segments from ${analysis.speakers.length} speakers`,
         startTime,
@@ -357,6 +385,114 @@ Write a 2-3 paragraph synthesis that:
 
     const response = await this.callLLM(prompt);
     return response.content;
+  }
+
+  /**
+   * Assess how the expert call aligns with the investment thesis
+   */
+  private async assessThesisAlignment(
+    analysis: TranscriptAnalysis,
+    enhancedInsights: ExpertSynthesizerOutput['keyInsights'],
+    hypothesisIds: string[],
+    thesisStatement?: string
+  ): Promise<ThesisAlignment> {
+    // Get hypothesis content for context
+    const hypotheses: Array<{ id: string; content: string }> = [];
+    for (const id of hypothesisIds) {
+      const hypothesis = await this.context?.dealMemory.getHypothesis(id);
+      if (hypothesis) {
+        hypotheses.push({ id, content: hypothesis.content });
+      }
+    }
+
+    // If no thesis statement and no hypotheses, return neutral assessment
+    if (!thesisStatement && hypotheses.length === 0) {
+      return {
+        overall: 'neutral',
+        score: 0,
+        reasoning: 'No investment thesis or hypotheses defined to assess alignment against.',
+        supportingPoints: [],
+        challengingPoints: [],
+      };
+    }
+
+    // Build the prompt with thesis and optionally hypotheses
+    let thesisSection = '';
+    if (thesisStatement) {
+      thesisSection = `INVESTMENT THESIS:
+${thesisStatement}
+
+`;
+    }
+    if (hypotheses.length > 0) {
+      thesisSection += `KEY HYPOTHESES TO VALIDATE:
+${hypotheses.map((h, i) => `${i + 1}. ${h.content}`).join('\n')}
+
+`;
+    }
+
+    const prompt = `Analyze how this expert interview aligns with the investment thesis.
+
+${thesisSection}EXPERT CALL SUMMARY:
+${analysis.summary}
+
+KEY INSIGHTS FROM CALL:
+${enhancedInsights.slice(0, 15).map((i) => `- [${i.insight.type}] ${i.insight.content} (Speaker: ${i.insight.speaker})`).join('\n')}
+
+KEY QUOTES:
+${analysis.keyQuotes.slice(0, 5).map((q) => `- "${q.text}" - ${q.speaker}`).join('\n')}
+
+Assess how this expert call aligns with the investment thesis:
+1. Does this call primarily SUPPORT, CONTRADICT, present MIXED signals, or is NEUTRAL to the thesis?
+2. What specific points from this call support the thesis?
+3. What specific points from this call challenge or contradict the thesis?
+4. Provide a numerical score from -1.0 (strongly contradicts) to +1.0 (strongly supports)
+
+Output as JSON:
+{
+  "overall": "supports" | "contradicts" | "mixed" | "neutral",
+  "score": <number between -1 and 1>,
+  "reasoning": "<1-2 sentence explanation>",
+  "supportingPoints": ["point1", "point2", ...],
+  "challengingPoints": ["point1", "point2", ...]
+}`;
+
+    try {
+      const response = await this.callLLM(prompt, { temperature: 0.2 });
+      const result = this.parseJSON<ThesisAlignment>(response.content);
+
+      if (result && this.isValidThesisAlignment(result)) {
+        return result;
+      }
+    } catch {
+      // Fall through to default
+    }
+
+    // Default to mixed if parsing fails
+    return {
+      overall: 'mixed',
+      score: 0,
+      reasoning: 'Unable to determine clear alignment from the expert call.',
+      supportingPoints: [],
+      challengingPoints: [],
+    };
+  }
+
+  /**
+   * Validate thesis alignment structure
+   */
+  private isValidThesisAlignment(obj: unknown): obj is ThesisAlignment {
+    if (!obj || typeof obj !== 'object') return false;
+    const alignment = obj as Record<string, unknown>;
+    return (
+      ['supports', 'contradicts', 'mixed', 'neutral'].includes(alignment['overall'] as string) &&
+      typeof alignment['score'] === 'number' &&
+      alignment['score'] >= -1 &&
+      alignment['score'] <= 1 &&
+      typeof alignment['reasoning'] === 'string' &&
+      Array.isArray(alignment['supportingPoints']) &&
+      Array.isArray(alignment['challengingPoints'])
+    );
   }
 
   /**

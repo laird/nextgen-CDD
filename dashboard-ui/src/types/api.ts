@@ -476,6 +476,22 @@ export interface EnhancedInsight {
   actionItems: string[];
 }
 
+/**
+ * Thesis alignment assessment for an expert call
+ */
+export interface ThesisAlignment {
+  /** Overall assessment: does this call support or contradict the investment thesis? */
+  overall: 'supports' | 'contradicts' | 'mixed' | 'neutral';
+  /** Score from -1 (strongly contradicts) to +1 (strongly supports) */
+  score: number;
+  /** Brief explanation of the assessment */
+  reasoning: string;
+  /** Points from this call that support the investment thesis */
+  supportingPoints: string[];
+  /** Points from this call that challenge or contradict the thesis */
+  challengingPoints: string[];
+}
+
 export interface ExpertCallResults {
   analysis: {
     id: string;
@@ -512,6 +528,7 @@ export interface ExpertCallResults {
   divergencePoints: string[];
   followUpQuestions: string[];
   synthesizedSummary: string;
+  thesisAlignment?: ThesisAlignment;
 }
 
 export interface ExpertCallStats {

@@ -1,8 +1,8 @@
 /**
  * Component for displaying expert call history
  */
-import { Clock, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Calendar, User } from 'lucide-react';
-import type { ExpertCall, ExpertCallStatus, ExpertCallResults, ExpertProfile } from '../../types/api';
+import { Clock, Loader2, CheckCircle, XCircle, AlertCircle, Trash2, Calendar, User, ThumbsUp, ThumbsDown, Scale, Minus } from 'lucide-react';
+import type { ExpertCall, ExpertCallStatus, ExpertCallResults, ExpertProfile, ThesisAlignment } from '../../types/api';
 
 interface ExpertCallHistoryProps {
   expertCalls: ExpertCall[];
@@ -56,6 +56,39 @@ function getInsightCount(expertCall: ExpertCall): number {
   const results = expertCall.results as ExpertCallResults;
   return results.keyInsights?.length ?? 0;
 }
+
+function getThesisAlignment(expertCall: ExpertCall): ThesisAlignment | undefined {
+  if (!expertCall.results) return undefined;
+  const results = expertCall.results as ExpertCallResults;
+  return results.thesisAlignment;
+}
+
+const alignmentConfig: Record<ThesisAlignment['overall'], {
+  icon: React.ReactNode;
+  color: string;
+  label: string;
+}> = {
+  supports: {
+    icon: <ThumbsUp className="h-3.5 w-3.5" />,
+    color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+    label: 'Supports',
+  },
+  contradicts: {
+    icon: <ThumbsDown className="h-3.5 w-3.5" />,
+    color: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
+    label: 'Contradicts',
+  },
+  mixed: {
+    icon: <Scale className="h-3.5 w-3.5" />,
+    color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
+    label: 'Mixed',
+  },
+  neutral: {
+    icon: <Minus className="h-3.5 w-3.5" />,
+    color: 'text-surface-500 bg-surface-100 dark:bg-surface-700 dark:text-surface-400',
+    label: 'Neutral',
+  },
+};
 
 /**
  * Extract the primary expert (interviewee) from the call results
@@ -127,6 +160,7 @@ export function ExpertCallHistory({
           const isSelected = call.id === selectedCallId;
           const insightCount = getInsightCount(call);
           const expert = getPrimaryExpert(call);
+          const thesisAlignment = getThesisAlignment(call);
           const isClickable = call.status === 'completed';
 
           return (
@@ -173,6 +207,13 @@ export function ExpertCallHistory({
                       {status.icon}
                       {status.label}
                     </span>
+                    {/* Thesis alignment badge */}
+                    {thesisAlignment && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${alignmentConfig[thesisAlignment.overall].color}`}>
+                        {alignmentConfig[thesisAlignment.overall].icon}
+                        {alignmentConfig[thesisAlignment.overall].label}
+                      </span>
+                    )}
                     {call.status === 'completed' && (
                       <span className="text-xs text-surface-500 dark:text-surface-400">
                         {insightCount} insights

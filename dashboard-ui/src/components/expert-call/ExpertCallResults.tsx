@@ -14,8 +14,12 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  ThumbsUp,
+  ThumbsDown,
+  Scale,
+  Minus,
 } from 'lucide-react';
-import type { ExpertCall, ExpertCallResults as ExpertCallResultsType } from '../../types/api';
+import type { ExpertCall, ExpertCallResults as ExpertCallResultsType, ThesisAlignment } from '../../types/api';
 import { InsightsList } from './InsightsList';
 
 interface ExpertCallResultsProps {
@@ -52,10 +56,93 @@ export function ExpertCallResults({ expertCall, onHypothesisClick }: ExpertCallR
     );
   }
 
-  const { analysis, expertProfiles, keyInsights, consensusPoints, divergencePoints, followUpQuestions, synthesizedSummary } = results;
+  const { analysis, expertProfiles, keyInsights, consensusPoints, divergencePoints, followUpQuestions, synthesizedSummary, thesisAlignment } = results;
+
+  // Get thesis alignment styling
+  const getAlignmentStyle = (alignment: ThesisAlignment | undefined) => {
+    if (!alignment) return { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400', icon: Minus, label: 'Not Assessed' };
+    switch (alignment.overall) {
+      case 'supports':
+        return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', icon: ThumbsUp, label: 'Supports Thesis' };
+      case 'contradicts':
+        return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', icon: ThumbsDown, label: 'Contradicts Thesis' };
+      case 'mixed':
+        return { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', icon: Scale, label: 'Mixed Signals' };
+      default:
+        return { bg: 'bg-surface-100 dark:bg-surface-700', text: 'text-surface-600 dark:text-surface-400', icon: Minus, label: 'Neutral' };
+    }
+  };
+
+  const alignmentStyle = getAlignmentStyle(thesisAlignment);
+  const AlignmentIcon = alignmentStyle.icon;
 
   return (
     <div className="space-y-4">
+      {/* Thesis Alignment Banner */}
+      {thesisAlignment && (
+        <div className={`rounded-lg border p-4 ${alignmentStyle.bg} ${
+          thesisAlignment.overall === 'supports' ? 'border-green-300 dark:border-green-700' :
+          thesisAlignment.overall === 'contradicts' ? 'border-red-300 dark:border-red-700' :
+          thesisAlignment.overall === 'mixed' ? 'border-yellow-300 dark:border-yellow-700' :
+          'border-surface-300 dark:border-surface-600'
+        }`}>
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-full ${alignmentStyle.bg}`}>
+              <AlignmentIcon className={`h-6 w-6 ${alignmentStyle.text}`} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className={`text-lg font-semibold ${alignmentStyle.text}`}>
+                  {alignmentStyle.label}
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-sm font-medium ${alignmentStyle.bg} ${alignmentStyle.text}`}>
+                  Score: {thesisAlignment.score > 0 ? '+' : ''}{thesisAlignment.score.toFixed(1)}
+                </span>
+              </div>
+              <p className="text-sm text-surface-700 dark:text-surface-300 mb-3">
+                {thesisAlignment.reasoning}
+              </p>
+
+              {/* Supporting & Challenging Points */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {thesisAlignment.supportingPoints.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-green-700 dark:text-green-400 mb-1 flex items-center gap-1">
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                      Supporting Points
+                    </h4>
+                    <ul className="space-y-1">
+                      {thesisAlignment.supportingPoints.map((point, idx) => (
+                        <li key={idx} className="text-xs text-surface-600 dark:text-surface-400 flex items-start gap-1">
+                          <span className="mt-1.5 h-1 w-1 rounded-full bg-green-500 flex-shrink-0" />
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {thesisAlignment.challengingPoints.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-red-700 dark:text-red-400 mb-1 flex items-center gap-1">
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                      Challenging Points
+                    </h4>
+                    <ul className="space-y-1">
+                      {thesisAlignment.challengingPoints.map((point, idx) => (
+                        <li key={idx} className="text-xs text-surface-600 dark:text-surface-400 flex items-start gap-1">
+                          <span className="mt-1.5 h-1 w-1 rounded-full bg-red-500 flex-shrink-0" />
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Summary Card */}
       <div className="bg-white dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700 p-4">
         <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-3">
