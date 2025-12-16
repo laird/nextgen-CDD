@@ -30,6 +30,7 @@ substitutions:
   _SERVICE_NAME: thesis-validator
   _NODE_VERSION: '20'
   _PR_NUMBER: ''  # Set by GitHub trigger for PRs, empty for manual builds
+  _TAG: latest  # Image tag, override with SHORT_SHA for triggered builds
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -87,9 +88,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${_TAG}'
       - '--cache-from'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
       - '.'
@@ -118,7 +117,7 @@ steps:
       - |
         if [ "$BRANCH_NAME" = "main" ]; then
           gcloud run deploy ${_SERVICE_NAME} \
-            --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA} \
+            --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${_TAG} \
             --region ${_REGION} \
             --platform managed \
             --allow-unauthenticated \
@@ -148,7 +147,7 @@ steps:
       - |
         if [ "$BRANCH_NAME" = "develop" ] || [ -n "$_PR_NUMBER" ]; then
           gcloud run deploy ${_SERVICE_NAME}-staging \
-            --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA} \
+            --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${_TAG} \
             --region ${_REGION} \
             --platform managed \
             --no-allow-unauthenticated \
@@ -168,8 +167,7 @@ steps:
 
 # Images to be pushed to Artifact Registry
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${_TAG}'
 
 # Build timeout (30 minutes)
 timeout: '1800s'
