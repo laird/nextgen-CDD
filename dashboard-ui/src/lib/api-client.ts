@@ -102,11 +102,27 @@ export class ThesisValidatorClient {
     return response.data;
   }
 
+  // Thesis
+  async submitThesis(engagementId: string, thesisStatement: string, valueCreationLevers?: string[]) {
+    const response = await this.client.post(
+      `/api/v1/engagements/${engagementId}/thesis`,
+      {
+        thesis_statement: thesisStatement,
+        value_creation_levers: valueCreationLevers
+      }
+    );
+    return response.data;
+  }
+
   // Research
   async startResearch(engagementId: string, thesis: string, config?: any) {
+    // First submit the thesis to the engagement
+    await this.submitThesis(engagementId, thesis);
+
+    // Then start the research workflow
     const response = await this.client.post(
       `/api/v1/engagements/${engagementId}/research`,
-      { thesis, config }
+      { ...config }
     );
     return response.data;
   }
