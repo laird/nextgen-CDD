@@ -12,7 +12,7 @@ export {
   type GoogleAuthConfig,
 } from './google-auth.js';
 
-// LLM Provider
+// LLM Provider (legacy - for backwards compatibility)
 export {
   LLMProvider,
   getLLMProvider,
@@ -26,3 +26,17 @@ export {
   type LLMRequest,
   type LLMResponse,
 } from './llm-provider.js';
+
+// Model Provider (new - Vercel AI SDK based)
+export {
+  createModel,
+  createAnthropicModel,
+  createVertexModel,
+  createOllamaModel,
+  getModelProviderConfig,
+  getDefaultModel,
+  isProviderAvailable,
+  listAvailableProviders,
+  type ModelProviderType,
+  type ModelProviderConfig,
+} from './model-provider.js';

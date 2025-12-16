@@ -2,14 +2,15 @@
  * Base Agent - Shared interface and utilities for all agents
  *
  * Provides common functionality for:
- * - LLM interaction (via Anthropic direct API or Vertex AI)
+ * - LLM interaction (via Vercel AI SDK - supports Anthropic, Vertex AI, Ollama)
  * - Memory access
  * - Event emission
  * - Tool execution
  * - State management
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { generateText, stepCountIs, type CoreMessage, type LanguageModel, type ToolSet } from 'ai';
+import { z } from 'zod';
 import type { DealMemory } from '../memory/deal-memory.js';
 import type { InstitutionalMemory } from '../memory/institutional-memory.js';
 import type { MarketIntelligence } from '../memory/market-intelligence.js';
@@ -17,11 +18,10 @@ import type { AgentStatus, EngagementEvent } from '../models/events.js';
 import { createAgentStatusEvent } from '../models/events.js';
 import { embed } from '../tools/embedding.js';
 import {
-  LLMProvider,
-  getLLMProviderConfig,
-  type LLMProviderConfig,
-  type LLMProviderType,
-} from '../services/llm-provider.js';
+  createModel,
+  type ModelProviderType,
+  type ModelProviderConfig,
+} from '../services/model-provider.js';
 
 /**
  * Agent configuration
@@ -34,9 +34,9 @@ export interface AgentConfig {
   temperature: number;
   systemPrompt: string;
   tools?: AgentTool[];
-  // LLM Provider configuration
-  llmProvider?: LLMProviderType;
-  llmProviderConfig?: Partial<LLMProviderConfig>;
+  // Model Provider configuration
+  modelProvider?: ModelProviderType;
+  modelProviderConfig?: Partial<ModelProviderConfig>;
 }
 
 /**
@@ -93,23 +93,34 @@ export interface AgentMessage {
  * Default agent configuration
  */
 const defaultConfig: Partial<AgentConfig> = {
-  model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
-  maxTokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] ?? '8192', 10),
+  model:
+    process.env['LLM_MODEL'] ??
+    process.env['ANTHROPIC_MODEL'] ??
+    process.env['VERTEX_AI_MODEL'] ??
+    process.env['OLLAMA_MODEL'] ??
+    'claude-sonnet-4-20250514',
+  maxTokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] ?? process.env['LLM_MAX_TOKENS'] ?? '8192', 10),
   temperature: 0.7,
-  llmProvider: (process.env['LLM_PROVIDER'] as LLMProviderType) ?? 'anthropic',
+  modelProvider: (process.env['LLM_PROVIDER'] as ModelProviderType) ?? 'anthropic',
 };
+
+// Re-export for backwards compatibility
+export type LLMProviderType = ModelProviderType;
 
 /**
  * Base Agent class
+ *
+ * Uses Vercel AI SDK for unified LLM access across providers:
+ * - Anthropic (direct API)
+ * - Google Vertex AI
+ * - Ollama (local)
  */
 export abstract class BaseAgent {
   protected config: AgentConfig;
-  protected client: Anthropic | null = null;
-  protected llmProvider: LLMProvider | null = null;
+  protected model: LanguageModel;
   protected context: AgentContext | null = null;
   protected status: AgentStatus = 'idle';
   protected conversationHistory: AgentMessage[] = [];
-  protected providerInitialized: boolean = false;
 
   constructor(config: Partial<AgentConfig> & { id: string; name: string; systemPrompt: string }) {
     this.config = {
@@ -117,62 +128,20 @@ export abstract class BaseAgent {
       ...config,
     } as AgentConfig;
 
-    // Initialize based on provider type
-    this.initializeProvider();
+    // Initialize model using AI SDK
+    const provider = this.config.modelProvider ?? 'anthropic';
+    this.model = createModel({
+      provider,
+      model: this.config.model,
+      ...this.config.modelProviderConfig,
+    });
   }
 
   /**
-   * Initialize the LLM provider based on configuration
+   * Get the model provider type being used
    */
-  private initializeProvider(): void {
-    const providerType = this.config.llmProvider ?? 'anthropic';
-
-    if (providerType === 'anthropic' && process.env['ANTHROPIC_API_KEY']) {
-      // Use direct Anthropic client for backwards compatibility
-      this.client = new Anthropic({
-        apiKey: process.env['ANTHROPIC_API_KEY'],
-      });
-      this.providerInitialized = true;
-    } else if (providerType === 'vertex-ai') {
-      // LLM Provider will be initialized lazily
-      const providerConfig = getLLMProviderConfig();
-      this.llmProvider = new LLMProvider({
-        ...providerConfig,
-        ...this.config.llmProviderConfig,
-        provider: 'vertex-ai',
-      });
-    } else {
-      // Default to LLM Provider abstraction
-      const providerConfig = getLLMProviderConfig();
-      this.llmProvider = new LLMProvider({
-        ...providerConfig,
-        ...this.config.llmProviderConfig,
-      });
-    }
-  }
-
-  /**
-   * Ensure the LLM provider is initialized (async initialization for Vertex AI)
-   */
-  protected async ensureProviderInitialized(): Promise<void> {
-    if (this.providerInitialized) {
-      return;
-    }
-
-    if (this.llmProvider) {
-      await this.llmProvider.initialize();
-      this.providerInitialized = true;
-    }
-  }
-
-  /**
-   * Get the LLM provider type being used
-   */
-  getProviderType(): LLMProviderType {
-    if (this.client) {
-      return 'anthropic';
-    }
-    return this.llmProvider?.getProviderType() ?? 'anthropic';
+  getProviderType(): ModelProviderType {
+    return this.config.modelProvider ?? 'anthropic';
   }
 
   /**
@@ -246,7 +215,7 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Call the LLM
+   * Call the LLM using Vercel AI SDK
    */
   protected async callLLM(
     prompt: string,
@@ -258,54 +227,28 @@ export abstract class BaseAgent {
   ): Promise<{ content: string; tokensUsed: { input: number; output: number } }> {
     this.updateStatus('thinking');
 
-    // Ensure provider is initialized (for Vertex AI async initialization)
-    await this.ensureProviderInitialized();
-
-    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    // Build messages array
+    const messages: CoreMessage[] = [];
 
     // Include conversation history if requested
     if (options?.includeHistory) {
-      messages.push(...this.conversationHistory);
+      for (const msg of this.conversationHistory) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
     }
 
     messages.push({ role: 'user', content: prompt });
 
     try {
-      let response: { content: Anthropic.ContentBlock[]; usage: { input_tokens: number; output_tokens: number } };
+      const result = await generateText({
+        model: this.model,
+        system: this.config.systemPrompt,
+        messages,
+        maxOutputTokens: options?.maxTokens ?? this.config.maxTokens,
+        temperature: options?.temperature ?? this.config.temperature,
+      });
 
-      if (this.client) {
-        // Use direct Anthropic client
-        response = await this.client.messages.create({
-          model: this.config.model,
-          max_tokens: options?.maxTokens ?? this.config.maxTokens,
-          temperature: options?.temperature ?? this.config.temperature,
-          system: this.config.systemPrompt,
-          messages,
-        });
-      } else if (this.llmProvider) {
-        // Use LLM Provider abstraction (supports Anthropic and Vertex AI)
-        const llmResponse = await this.llmProvider.createMessage({
-          model: this.config.model,
-          maxTokens: options?.maxTokens ?? this.config.maxTokens,
-          temperature: options?.temperature ?? this.config.temperature,
-          system: this.config.systemPrompt,
-          messages,
-        });
-        response = {
-          content: llmResponse.content,
-          usage: {
-            input_tokens: llmResponse.usage.input_tokens,
-            output_tokens: llmResponse.usage.output_tokens,
-          },
-        };
-      } else {
-        throw new Error('No LLM provider available');
-      }
-
-      const content = response.content
-        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-        .map((block) => block.text)
-        .join('\n');
+      const content = result.text;
 
       // Update conversation history
       this.conversationHistory.push({ role: 'user', content: prompt });
@@ -314,8 +257,8 @@ export abstract class BaseAgent {
       return {
         content,
         tokensUsed: {
-          input: response.usage.input_tokens,
-          output: response.usage.output_tokens,
+          input: result.usage?.inputTokens ?? 0,
+          output: result.usage?.outputTokens ?? 0,
         },
       };
     } catch (error) {
@@ -325,11 +268,11 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Call LLM with tools
+   * Call LLM with tools using Vercel AI SDK
    */
   protected async callLLMWithTools(
     prompt: string,
-    tools: AgentTool[],
+    agentTools: AgentTool[],
     options?: {
       includeHistory?: boolean;
       maxIterations?: number;
@@ -341,13 +284,8 @@ export abstract class BaseAgent {
   }> {
     this.updateStatus('thinking');
 
-    // Ensure provider is initialized (for Vertex AI async initialization)
-    await this.ensureProviderInitialized();
-
-    const messages: Array<{ role: 'user' | 'assistant'; content: string | Anthropic.ContentBlock[] }> = [];
-    const toolCalls: Array<{ tool: string; input: Record<string, unknown>; output: unknown }> = [];
-    const totalTokens = { input: 0, output: 0 };
-    const maxIterations = options?.maxIterations ?? 10;
+    // Build messages array
+    const messages: CoreMessage[] = [];
 
     // Include conversation history if requested
     if (options?.includeHistory) {
@@ -358,126 +296,133 @@ export abstract class BaseAgent {
 
     messages.push({ role: 'user', content: prompt });
 
-    // Convert tools to Anthropic format
-    const anthropicTools: Anthropic.Tool[] = tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      input_schema: tool.inputSchema as Anthropic.Tool.InputSchema,
-    }));
+    // Convert agent tools to AI SDK format
+    const toolResults: Array<{ tool: string; input: Record<string, unknown>; output: unknown }> = [];
 
-    let iteration = 0;
-    let finalContent = '';
+    // Build tools object directly without the tool() helper
+    // The tool() helper has typing issues with exactOptionalPropertyTypes
+    const toolsConfig = {} as ToolSet;
+    for (const agentTool of agentTools) {
+      const schema = this.convertToZodSchema(agentTool.inputSchema);
+      const handler = agentTool.handler;
+      const toolName = agentTool.name;
+      const updateStatus = this.updateStatus.bind(this);
 
-    while (iteration < maxIterations) {
-      iteration++;
-
-      try {
-        let response: { content: Anthropic.ContentBlock[]; usage: { input_tokens: number; output_tokens: number } };
-
-        if (this.client) {
-          // Use direct Anthropic client
-          response = await this.client.messages.create({
-            model: this.config.model,
-            max_tokens: this.config.maxTokens,
-            temperature: this.config.temperature,
-            system: this.config.systemPrompt,
-            messages: messages as Anthropic.MessageParam[],
-            tools: anthropicTools,
+      // Define tool directly with the structure generateText expects
+      (toolsConfig as Record<string, unknown>)[agentTool.name] = {
+        description: agentTool.description,
+        parameters: schema,
+        execute: async (input: Record<string, unknown>) => {
+          updateStatus('searching');
+          const output = await handler(input);
+          toolResults.push({
+            tool: toolName,
+            input,
+            output,
           });
-        } else if (this.llmProvider) {
-          // Use LLM Provider abstraction
-          const llmResponse = await this.llmProvider.createMessage({
-            model: this.config.model,
-            maxTokens: this.config.maxTokens,
-            temperature: this.config.temperature,
-            system: this.config.systemPrompt,
-            messages: messages as Array<{ role: 'user' | 'assistant'; content: string | Anthropic.ContentBlock[] }>,
-            tools: anthropicTools,
-          });
-          response = {
-            content: llmResponse.content,
-            usage: {
-              input_tokens: llmResponse.usage.input_tokens,
-              output_tokens: llmResponse.usage.output_tokens,
-            },
-          };
-        } else {
-          throw new Error('No LLM provider available');
-        }
-
-        totalTokens.input += response.usage.input_tokens;
-        totalTokens.output += response.usage.output_tokens;
-
-        // Check if we need to handle tool calls
-        const toolUseBlocks = response.content.filter(
-          (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
-        );
-
-        if (toolUseBlocks.length === 0) {
-          // No tool calls, get final response
-          finalContent = response.content
-            .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-            .map((block) => block.text)
-            .join('\n');
-          break;
-        }
-
-        // Process tool calls
-        this.updateStatus('searching');
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-
-        for (const toolUse of toolUseBlocks) {
-          const tool = tools.find((t) => t.name === toolUse.name);
-          if (!tool) {
-            toolResults.push({
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: `Tool not found: ${toolUse.name}`,
-              is_error: true,
-            });
-            continue;
-          }
-
-          try {
-            const output = await tool.handler(toolUse.input as Record<string, unknown>);
-            toolCalls.push({
-              tool: toolUse.name,
-              input: toolUse.input as Record<string, unknown>,
-              output,
-            });
-            toolResults.push({
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: typeof output === 'string' ? output : JSON.stringify(output),
-            });
-          } catch (error) {
-            toolResults.push({
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: `Tool error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              is_error: true,
-            });
-          }
-        }
-
-        // Add assistant response and tool results to messages
-        messages.push({ role: 'assistant', content: response.content });
-        messages.push({ role: 'user', content: toolResults as unknown as Anthropic.ContentBlock[] });
-      } catch (error) {
-        this.updateStatus('error', error instanceof Error ? error.message : 'Unknown error');
-        throw error;
-      }
+          return output;
+        },
+      };
     }
 
-    // Update conversation history with final result
-    this.conversationHistory.push({ role: 'user', content: prompt });
-    this.conversationHistory.push({ role: 'assistant', content: finalContent });
+    try {
+      const result = await generateText({
+        model: this.model,
+        system: this.config.systemPrompt,
+        messages,
+        tools: toolsConfig,
+        stopWhen: stepCountIs(options?.maxIterations ?? 10),
+        maxOutputTokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+      });
 
-    return {
-      content: finalContent,
-      toolCalls,
-      tokensUsed: totalTokens,
-    };
+      const content = result.text;
+
+      // Update conversation history
+      this.conversationHistory.push({ role: 'user', content: prompt });
+      this.conversationHistory.push({ role: 'assistant', content });
+
+      return {
+        content,
+        toolCalls: toolResults,
+        tokensUsed: {
+          input: result.usage?.inputTokens ?? 0,
+          output: result.usage?.outputTokens ?? 0,
+        },
+      };
+    } catch (error) {
+      this.updateStatus('error', error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
+  /**
+   * Convert JSON Schema to Zod schema
+   * This is a simplified converter - handles common cases
+   */
+  private convertToZodSchema(jsonSchema: Record<string, unknown>): z.ZodType {
+    const properties = jsonSchema['properties'] as Record<string, unknown> | undefined;
+    const required = (jsonSchema['required'] as string[]) ?? [];
+
+    if (!properties) {
+      return z.object({});
+    }
+
+    const shape: Record<string, z.ZodType> = {};
+
+    for (const [key, propSchema] of Object.entries(properties)) {
+      const prop = propSchema as Record<string, unknown>;
+      const isRequired = required.includes(key);
+
+      let zodType: z.ZodType;
+
+      switch (prop['type']) {
+        case 'string':
+          zodType = z.string();
+          if (prop['description']) {
+            zodType = zodType.describe(prop['description'] as string);
+          }
+          break;
+        case 'number':
+        case 'integer':
+          zodType = z.number();
+          if (prop['description']) {
+            zodType = zodType.describe(prop['description'] as string);
+          }
+          break;
+        case 'boolean':
+          zodType = z.boolean();
+          if (prop['description']) {
+            zodType = zodType.describe(prop['description'] as string);
+          }
+          break;
+        case 'array':
+          const items = prop['items'] as Record<string, unknown> | undefined;
+          if (items?.['type'] === 'string') {
+            zodType = z.array(z.string());
+          } else if (items?.['type'] === 'number') {
+            zodType = z.array(z.number());
+          } else {
+            zodType = z.array(z.unknown());
+          }
+          if (prop['description']) {
+            zodType = zodType.describe(prop['description'] as string);
+          }
+          break;
+        case 'object':
+          zodType = z.record(z.unknown());
+          if (prop['description']) {
+            zodType = zodType.describe(prop['description'] as string);
+          }
+          break;
+        default:
+          zodType = z.unknown();
+      }
+
+      shape[key] = isRequired ? zodType : zodType.optional();
+    }
+
+    return z.object(shape);
   }
 
   /**
