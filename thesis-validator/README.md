@@ -38,8 +38,11 @@ Thesis Validator is a multi-agent AI system designed to validate, pressure-test,
 
 - Node.js 20+
 - Docker & Docker Compose
-- Anthropic API Key
-- OpenAI API Key
+- LLM Provider (choose one):
+  - Anthropic API Key, OR
+  - Google Cloud Project with Vertex AI enabled, OR
+  - Ollama running locally (free, no API key needed)
+- OpenAI API Key (for embeddings)
 - Tavily API Key (for web search)
 
 ### Installation
@@ -172,24 +175,76 @@ Real-time market signals with temporal decay:
 
 ## Configuration
 
-### Environment Variables
+### LLM Provider Configuration
+
+The system supports multiple LLM providers through the Vercel AI SDK. Configure your preferred provider using environment variables:
+
+#### Option 1: Anthropic (Direct API)
 
 ```bash
-# API Keys
-ANTHROPIC_API_KEY=sk-...
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-20250514  # Optional, this is the default
+```
+
+#### Option 2: Google Vertex AI
+
+```bash
+LLM_PROVIDER=vertex-ai
+GOOGLE_CLOUD_PROJECT=your-gcp-project-id
+GOOGLE_CLOUD_REGION=us-central1  # Optional, defaults to us-central1
+VERTEX_AI_MODEL=claude-sonnet-4-20250514  # Optional
+```
+
+For Vertex AI authentication, use one of:
+- **Service Account**: Set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json`
+- **Workload Identity**: Automatic on GKE
+- **Default Service Account**: Automatic on Cloud Run/GCE
+- **User Credentials**: Run `gcloud auth application-default login`
+
+#### Option 3: Ollama (Local LLM)
+
+```bash
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.2  # Or any model you have installed
+OLLAMA_BASE_URL=http://localhost:11434  # Optional, this is the default
+```
+
+To use Ollama:
+1. Install Ollama from https://ollama.ai
+2. Pull a model: `ollama pull llama3.2`
+3. Start Ollama: `ollama serve`
+
+#### Model Override
+
+You can override the model for any provider using `LLM_MODEL`:
+
+```bash
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-opus-4-20250514  # Override the default model
+```
+
+### Other Environment Variables
+
+```bash
+# Embeddings (required)
 OPENAI_API_KEY=sk-...
-TAVILY_API_KEY=...
+EMBEDDING_MODEL=text-embedding-3-large
+
+# Web Search
+TAVILY_API_KEY=tvly-...
 
 # Server
 API_HOST=0.0.0.0
 API_PORT=3000
 
 # Database
-RUVECTOR_HOST=localhost
-RUVECTOR_PORT=6333
+DATABASE_URL=postgresql://user:pass@localhost:5432/thesis_validator
+REDIS_URL=redis://localhost:6379
 
 # Security
-JWT_SECRET=your-secret-key
+JWT_SECRET=your-secret-key-at-least-32-characters
+DISABLE_AUTH=true  # For development only
 ```
 
 ## Development
