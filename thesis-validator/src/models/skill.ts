@@ -392,4 +392,248 @@ Output format:
 - Mitigation recommendations
 - Action items for due diligence`,
   },
+
+  management_assessment: {
+    name: 'management_assessment',
+    description: 'Evaluate management team quality and track record',
+    category: 'operational' as const,
+    parameters: [
+      { name: 'team_profiles', type: 'array' as const, description: 'Executive team profiles', required: true },
+      { name: 'company_history', type: 'string' as const, description: 'Company history and timeline', required: false },
+    ],
+    implementation: `Perform a comprehensive management team assessment:
+
+1. Executive Background Analysis:
+   - Education and professional credentials
+   - Prior company/industry experience
+   - Track record of value creation
+   - Tenure and stability
+
+2. Team Dynamics:
+   - Complementary skill sets
+   - Decision-making structure
+   - Succession planning
+   - Board composition and governance
+
+3. Performance Metrics:
+   - Historical financial performance under current team
+   - Strategic initiatives executed
+   - Crisis management track record
+   - Employee retention/satisfaction
+
+4. Reference and Reputation:
+   - Industry standing
+   - Customer/partner relationships
+   - Regulatory relationships
+
+Output format:
+- Individual executive assessments
+- Team strength/weakness matrix
+- Red flags and concerns
+- Recommendations for further diligence`,
+  },
+
+  customer_concentration_risk: {
+    name: 'customer_concentration_risk',
+    description: 'Analyze customer concentration and revenue dependency risks',
+    category: 'risk' as const,
+    parameters: [
+      { name: 'customer_data', type: 'object' as const, description: 'Customer revenue breakdown', required: true },
+      { name: 'industry_benchmarks', type: 'object' as const, description: 'Industry concentration benchmarks', required: false },
+    ],
+    implementation: `Analyze customer concentration risk:
+
+1. Revenue Concentration Metrics:
+   - Top 1/5/10 customer % of revenue
+   - Herfindahl-Hirschman Index for customer base
+   - Year-over-year concentration trends
+
+2. Customer Profile Analysis:
+   - Customer industry/sector distribution
+   - Geographic distribution
+   - Contract terms and renewal rates
+   - Payment terms and credit risk
+
+3. Dependency Assessment:
+   - Single customer dependencies
+   - Platform/ecosystem dependencies
+   - Channel partner concentration
+
+4. Risk Scenarios:
+   - Impact of losing top customers
+   - Contract renewal risk
+   - Pricing power assessment
+
+Output format:
+- Concentration metrics with industry benchmarks
+- Customer risk heat map
+- Contract analysis summary
+- Mitigation strategies`,
+  },
+
+  regulatory_risk_assessment: {
+    name: 'regulatory_risk_assessment',
+    description: 'Evaluate regulatory environment and compliance risks',
+    category: 'regulatory' as const,
+    parameters: [
+      { name: 'industry', type: 'string' as const, description: 'Target industry', required: true },
+      { name: 'geographies', type: 'array' as const, description: 'Operating geographies', required: true },
+      { name: 'known_regulations', type: 'array' as const, description: 'Known applicable regulations', required: false },
+    ],
+    implementation: `Perform regulatory risk assessment:
+
+1. Regulatory Landscape Mapping:
+   - Applicable federal/state/local regulations
+   - Industry-specific requirements
+   - International compliance (if applicable)
+   - Pending regulatory changes
+
+2. Compliance Status:
+   - Current compliance posture
+   - Historical violations/fines
+   - Audit history
+   - Required licenses and permits
+
+3. Regulatory Risk Factors:
+   - Political/policy risk
+   - Enforcement trends
+   - Industry lobbying dynamics
+   - Regulatory capture risk
+
+4. Future Outlook:
+   - Pending legislation
+   - Regulatory trends
+   - ESG/sustainability requirements
+   - Data privacy evolution
+
+Output format:
+- Regulatory matrix by jurisdiction
+- Compliance gap analysis
+- Risk scoring by regulation type
+- Recommended compliance investments`,
+  },
+
+  technology_stack_assessment: {
+    name: 'technology_stack_assessment',
+    description: 'Evaluate technology infrastructure and technical debt',
+    category: 'technology' as const,
+    parameters: [
+      { name: 'tech_stack', type: 'object' as const, description: 'Current technology stack details', required: true },
+      { name: 'it_org', type: 'object' as const, description: 'IT organization structure', required: false },
+    ],
+    implementation: `Assess technology infrastructure:
+
+1. Architecture Review:
+   - System architecture overview
+   - Cloud vs on-premise distribution
+   - Integration patterns
+   - Scalability assessment
+
+2. Technical Debt Analysis:
+   - Legacy system dependencies
+   - Code quality indicators
+   - Documentation completeness
+   - Security vulnerabilities
+
+3. IT Operations:
+   - Uptime/reliability metrics
+   - Incident management
+   - Disaster recovery capabilities
+   - DevOps maturity
+
+4. Technology Investment:
+   - R&D spending as % of revenue
+   - Technology roadmap
+   - Build vs buy decisions
+   - Vendor lock-in risks
+
+Output format:
+- Technology stack diagram
+- Technical debt quantification
+- Security posture assessment
+- Investment recommendations`,
+  },
+
+  unit_economics_analysis: {
+    name: 'unit_economics_analysis',
+    description: 'Deep dive into unit economics and contribution margins',
+    category: 'financial' as const,
+    parameters: [
+      { name: 'revenue_data', type: 'object' as const, description: 'Revenue breakdown by product/customer', required: true },
+      { name: 'cost_data', type: 'object' as const, description: 'Cost structure details', required: true },
+      { name: 'growth_data', type: 'object' as const, description: 'Growth metrics', required: false },
+    ],
+    implementation: `Analyze unit economics:
+
+1. Revenue Per Unit:
+   - Average revenue per user/customer (ARPU)
+   - Revenue by product line
+   - Pricing tiers and mix
+   - Discount/promotion impact
+
+2. Cost Per Unit:
+   - Customer acquisition cost (CAC)
+   - Cost of goods sold per unit
+   - Fulfillment/delivery costs
+   - Customer service costs
+
+3. Contribution Margin:
+   - Gross margin by segment
+   - Contribution margin by channel
+   - Marginal economics at scale
+   - Fixed vs variable cost structure
+
+4. Lifetime Value:
+   - Customer lifetime value (LTV)
+   - LTV/CAC ratio
+   - Payback period
+   - Cohort analysis
+
+Output format:
+- Unit economics waterfall
+- Segment profitability analysis
+- Sensitivity analysis
+- Path to improved economics`,
+  },
+
+  market_timing_assessment: {
+    name: 'market_timing_assessment',
+    description: 'Evaluate market timing and cycle position',
+    category: 'market_sizing' as const,
+    parameters: [
+      { name: 'market', type: 'string' as const, description: 'Target market description', required: true },
+      { name: 'economic_indicators', type: 'array' as const, description: 'Relevant economic indicators', required: false },
+    ],
+    implementation: `Assess market timing:
+
+1. Market Cycle Position:
+   - Current stage (early, growth, mature, decline)
+   - Historical cycle patterns
+   - Leading indicators
+   - Comparison to similar markets
+
+2. Macro Environment:
+   - Economic cycle alignment
+   - Interest rate environment
+   - Capital availability
+   - M&A activity levels
+
+3. Industry Dynamics:
+   - Competitive intensity trends
+   - Technology disruption stage
+   - Regulatory evolution
+   - Customer behavior shifts
+
+4. Timing Implications:
+   - Entry point assessment
+   - Hold period considerations
+   - Exit timing scenarios
+   - Downside protection needs
+
+Output format:
+- Market cycle diagram
+- Timing scorecard
+- Historical analogies
+- Risk-adjusted timing recommendation`,
+  },
 };
