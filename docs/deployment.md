@@ -393,7 +393,24 @@ After the backend is deployed, you need to initialize the database schema and se
 
 Since Cloud SQL uses private IP, you need to connect via the Cloud SQL Auth Proxy.
 
-#### Option A: From Cloud Shell (Recommended)
+#### Option A: Using Cloud Build (Recommended for Private IP)
+
+This is the simplest approach when Cloud SQL only has a private IP:
+
+```bash
+# Get the SQL connection name
+SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres --format="value(connectionName)")
+echo "SQL Connection: $SQL_CONNECTION"
+
+# Run migrations via Cloud Build
+gcloud builds submit --config=thesis-validator/cloudbuild-migrate.yaml \
+  --substitutions=_SQL_CONNECTION=$SQL_CONNECTION
+```
+
+#### Option B: From Cloud Shell (Only if Cloud SQL has Public IP)
+
+> **Note:** This option only works if your Cloud SQL instance has a public IP.
+> If you're using private IP only, use Option A above.
 
 ```bash
 # 1. Download Cloud SQL Auth Proxy

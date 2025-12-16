@@ -1,0 +1,107 @@
+# =============================================================================
+# Cloud Build Configuration for Database Migrations
+# =============================================================================
+# This configuration runs database migrations using Cloud Build's ability
+# to access private Cloud SQL instances via VPC connector.
+#
+# Usage:
+#   gcloud builds submit --config=thesis-validator/cloudbuild-migrate.yaml \
+#     --substitutions=_SQL_CONNECTION=<connection-name>
+#
+# Required Substitutions:
+#   _SQL_CONNECTION: Cloud SQL connection name (project:region:instance)
+#
+# Required Secrets (in Secret Manager):
+#   thesis-validator-db-password: Database password
+# =============================================================================
+
+substitutions:
+  _SQL_CONNECTION: ''
+  _DB_NAME: thesis_validator
+  _DB_USER: thesis_validator
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: 'projects/${PROJECT_ID}/locations/us-central1/workerPools/private-pool'
+  # Use default pool if no private pool exists - will still work with Cloud SQL Auth Proxy
+
+steps:
+  # ---------------------------------------------------------------------------
+  # Step 1: Install Cloud SQL Auth Proxy
+  # ---------------------------------------------------------------------------
+  - id: 'setup-proxy'
+    name: 'gcr.io/cloud-builders/wget'
+    args:
+      - '-O'
+      - '/workspace/cloud-sql-proxy'
+      - 'https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64'
+
+  - id: 'make-proxy-executable'
+    name: 'ubuntu'
+    entrypoint: 'chmod'
+    args: ['+x', '/workspace/cloud-sql-proxy']
+    waitFor: ['setup-proxy']
+
+  # ---------------------------------------------------------------------------
+  # Step 2: Install dependencies
+  # ---------------------------------------------------------------------------
+  - id: 'install-dependencies'
+    name: 'node:20-alpine'
+    dir: 'thesis-validator'
+    entrypoint: 'npm'
+    args: ['ci', '--omit=dev', '--ignore-scripts']
+    waitFor: ['-']
+
+  # ---------------------------------------------------------------------------
+  # Step 3: Run migrations with Cloud SQL Proxy
+  # ---------------------------------------------------------------------------
+  - id: 'run-migrations'
+    name: 'node:20-alpine'
+    dir: 'thesis-validator'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        # Install required packages for the proxy
+        apk add --no-cache libc6-compat
+
+        # Start Cloud SQL Proxy in background
+        /workspace/cloud-sql-proxy ${_SQL_CONNECTION} &
+        PROXY_PID=$$!
+
+        # Wait for proxy to be ready
+        echo "Waiting for Cloud SQL Proxy to start..."
+        sleep 5
+
+        # Check if proxy is running
+        if ! kill -0 $$PROXY_PID 2>/dev/null; then
+          echo "ERROR: Cloud SQL Proxy failed to start"
+          exit 1
+        fi
+
+        echo "Cloud SQL Proxy started successfully"
+
+        # Run migrations
+        echo "Running database migrations..."
+        npm run db:migrate
+
+        # Run skill seeding
+        echo "Seeding skill library..."
+        npm run seed:skills
+
+        # Cleanup
+        kill $$PROXY_PID 2>/dev/null || true
+        echo "Done!"
+    env:
+      - 'DATABASE_URL=postgresql://${_DB_USER}:$$DB_PASSWORD@localhost:5432/${_DB_NAME}'
+    secretEnv: ['DB_PASSWORD']
+    waitFor: ['make-proxy-executable', 'install-dependencies']
+
+# Access secrets from Secret Manager
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/thesis-validator-db-password/versions/latest
+      env: 'DB_PASSWORD'
+
+timeout: '600s'
