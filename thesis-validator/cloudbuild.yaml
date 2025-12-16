@@ -137,7 +137,7 @@ steps:
             --port 3000 \
             --vpc-connector tv-vpc-connector \
             --add-cloudsql-instances ${PROJECT_ID}:${_REGION}:thesis-validator-postgres \
-            --set-env-vars "NODE_ENV=production,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=global,CORS_ORIGINS=*,DISABLE_AUTH=true,REDIS_HOST=10.138.233.67,REDIS_PORT=6379" \
+            --set-env-vars "NODE_ENV=production,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=global,CORS_ORIGINS=*,DISABLE_AUTH=true,REDIS_HOST=10.138.233.67,REDIS_PORT=6379,ENABLE_SKILL_LIBRARY=true" \
             --set-secrets "JWT_SECRET=thesis-validator-jwt-secret:latest,OPENAI_API_KEY=openai-api-key:latest,TAVILY_API_KEY=tavily-api-key:latest,DATABASE_URL=thesis-validator-database-url:latest" \
             --memory 2Gi \
             --cpu 2 \
@@ -169,7 +169,7 @@ steps:
             --no-allow-unauthenticated \
             --vpc-connector tv-vpc-connector \
             --add-cloudsql-instances ${PROJECT_ID}:${_REGION}:thesis-validator-postgres \
-            --set-env-vars "NODE_ENV=staging,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=global,DISABLE_AUTH=true,REDIS_HOST=10.138.233.67,REDIS_PORT=6379" \
+            --set-env-vars "NODE_ENV=staging,LLM_PROVIDER=vertex-ai,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=global,DISABLE_AUTH=true,REDIS_HOST=10.138.233.67,REDIS_PORT=6379,ENABLE_SKILL_LIBRARY=true" \
             --set-secrets "JWT_SECRET=thesis-validator-jwt-secret:latest,OPENAI_API_KEY=openai-api-key:latest,TAVILY_API_KEY=tavily-api-key:latest,DATABASE_URL=thesis-validator-database-url:latest" \
             --memory 1Gi \
             --cpu 1 \

@@ -100,6 +100,18 @@ export async function initializeMemorySystems(): Promise<void> {
   const skillLibrary = getSkillLibrary();
   await skillLibrary.initialize();
 
+  // Seed default skills if ENABLE_SKILL_LIBRARY is set
+  if (process.env['ENABLE_SKILL_LIBRARY'] === 'true') {
+    try {
+      const seededCount = await skillLibrary.seedDefaultSkills('system');
+      if (seededCount > 0) {
+        console.log(`[Memory] Seeded ${seededCount} default skills`);
+      }
+    } catch (error) {
+      console.warn('[Memory] Failed to seed default skills:', error);
+    }
+  }
+
   console.log('[Memory] All memory systems initialized');
 }
 
