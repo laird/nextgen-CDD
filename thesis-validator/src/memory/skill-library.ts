@@ -108,6 +108,7 @@ export class SkillLibrary {
     });
 
     this.skillCache.set(skill.id, skill);
+    console.log(`[SkillLibrary] Added skill to cache: ${skill.name}, cache size: ${this.skillCache.size}`);
 
     // Store initial version
     this.versionHistory.set(skill.id, [{
@@ -388,7 +389,9 @@ export class SkillLibrary {
     sort_by?: 'usage_count' | 'success_rate' | 'created_at';
   } = {}): Promise<SkillDefinition[]> {
     // Use cached skills directly for reliability (vector search with zero vectors can be unreliable)
+    console.log(`[SkillLibrary] list() called, cache size: ${this.skillCache.size}`);
     let skills = Array.from(this.skillCache.values());
+    console.log(`[SkillLibrary] skills from cache: ${skills.length}`);
 
     // Apply category filter
     if (options.category !== undefined) {
