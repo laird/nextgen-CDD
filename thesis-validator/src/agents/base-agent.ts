@@ -676,7 +676,7 @@ Output as JSON object with parameter names as keys:`;
             zodType = zodType.describe(prop['description'] as string);
           }
           break;
-        case 'array':
+        case 'array': {
           const items = prop['items'] as Record<string, unknown> | undefined;
           if (items?.['type'] === 'string') {
             zodType = z.array(z.string());
@@ -689,6 +689,7 @@ Output as JSON object with parameter names as keys:`;
             zodType = zodType.describe(prop['description'] as string);
           }
           break;
+        }
         case 'object':
           zodType = z.record(z.unknown());
           if (prop['description']) {
