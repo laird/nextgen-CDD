@@ -18,6 +18,7 @@ import {
 import { createDealMemory, type DealMemory } from '../memory/deal-memory.js';
 import { getInstitutionalMemory } from '../memory/institutional-memory.js';
 import { getMarketIntelligence } from '../memory/market-intelligence.js';
+import { getSkillLibrary } from '../memory/index.js';
 import type { Engagement, EngagementEvent, InvestmentThesis } from '../models/index.js';
 import { createEvent } from '../models/events.js';
 import { MetricsRepository } from '../repositories/index.js';
@@ -117,6 +118,7 @@ export class ResearchWorkflow {
       dealMemory: this.dealMemory,
       institutionalMemory: getInstitutionalMemory(),
       marketIntelligence: getMarketIntelligence(),
+      skillLibrary: getSkillLibrary(),
     };
     if (input.onEvent) {
       baseContext.onEvent = input.onEvent;
