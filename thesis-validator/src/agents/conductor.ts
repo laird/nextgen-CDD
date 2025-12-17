@@ -223,7 +223,10 @@ Output as JSON with this structure:
   ]
 }`;
 
-    const response = await this.callLLMWithTools(prompt, tools);
+    // Temporarily use callLLM without tools to work around AI SDK Vertex tool schema bug
+    // TODO: Revert to callLLMWithTools when the bug is fixed
+    // See: https://github.com/vercel/ai/issues/9761
+    const response = await this.callLLM(prompt);
     const planData = this.parseJSON<{
       name: string;
       description: string;
