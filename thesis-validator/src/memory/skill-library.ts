@@ -264,7 +264,8 @@ export class SkillLibrary {
       // Record execution
       await this.recordExecution(request.skill_id, result.success, Date.now() - startTime);
 
-      return result;
+      // Ensure skill_id is set on the result
+      return { ...result, skill_id: request.skill_id };
     } catch (error) {
       const execTime = Date.now() - startTime;
       await this.recordExecution(request.skill_id, false, execTime);

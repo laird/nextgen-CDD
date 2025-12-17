@@ -107,8 +107,9 @@ export function createLLMSkillExecutor(): SkillExecutor {
     try {
       const prompt = buildSkillPrompt(implementation, parameters, context);
 
+      const model = context.model ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514';
       const response = await llmProvider.createMessage({
-        model: process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
+        model,
         maxTokens: 4096,
         temperature: 0.3,
         system: 'You are an expert analyst executing structured analytical frameworks. Provide thorough, evidence-based analysis.',
@@ -129,7 +130,7 @@ export function createLLMSkillExecutor(): SkillExecutor {
         execution_time_ms: Date.now() - startTime,
         metadata: {
           tokens_used: response.usage.input_tokens + response.usage.output_tokens,
-          model_used: process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
+          model_used: model,
         },
       };
     } catch (error) {
