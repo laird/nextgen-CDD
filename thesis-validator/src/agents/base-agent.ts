@@ -259,18 +259,27 @@ export abstract class BaseAgent {
       return [];
     }
 
-    const embedding = await this.embed(taskDescription);
-    const results = await this.context.skillLibrary.search(embedding, { top_k: topK });
+    try {
+      const embedding = await this.embed(taskDescription);
+      const results = await this.context.skillLibrary.search(embedding, { top_k: topK });
 
-    const skills: SkillDefinition[] = [];
-    for (const result of results) {
-      const skill = await this.context.skillLibrary.get(result.id);
-      if (skill) {
-        skills.push(skill);
+      const skills: SkillDefinition[] = [];
+      for (const result of results) {
+        if (!result?.id) continue;
+        const skill = await this.context.skillLibrary.get(result.id);
+        if (skill) {
+          skills.push(skill);
+        }
       }
-    }
 
-    return skills;
+      return skills;
+    } catch (error) {
+      console.error(
+        `[${this.config.name}] Error finding relevant skills:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return [];
+    }
   }
 
   /**
@@ -290,13 +299,22 @@ export abstract class BaseAgent {
       };
     }
 
-    return this.context.skillLibrary.execute({
+    console.log(`[${this.config.name}] Executing skill: ${skillId}`);
+    const result = await this.context.skillLibrary.execute({
       skill_id: skillId,
       parameters,
       context: {
         engagement_id: this.context.engagementId,
       },
     });
+
+    if (result.success) {
+      console.log(`[${this.config.name}] Skill ${skillId} succeeded in ${result.execution_time_ms}ms`);
+    } else {
+      console.warn(`[${this.config.name}] Skill ${skillId} failed: ${result.error}`);
+    }
+
+    return result;
   }
 
   /**
@@ -329,8 +347,16 @@ Output as JSON object with parameter names as keys:`;
     try {
       const response = await this.callLLM(prompt, { temperature: 0, maxTokens: 1024 });
       const params = this.parseJSON<Record<string, unknown>>(response.content);
-      return params ?? {};
-    } catch {
+      if (!params) {
+        console.warn(`[${this.config.name}] Failed to parse parameters for skill: ${skill.name}`);
+        return {};
+      }
+      return params;
+    } catch (error) {
+      console.error(
+        `[${this.config.name}] Error extracting parameters for skill ${skill.name}:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return {};
     }
   }
