@@ -13,6 +13,7 @@ import type { AgentResult, AgentTool } from './base-agent.js';
 import type { EvidenceNode, EvidenceSentiment, EvidenceSourceType } from '../models/evidence.js';
 import { createEvidenceFoundEvent, createHypothesisUpdatedEvent } from '../models/events.js';
 import type { HypothesisStatus } from '../models/hypothesis.js';
+import type { SkillDefinition, SkillExecutionResult } from '../models/index.js';
 import { webSearch } from '../tools/web-search.js';
 import { scoreCredibility, type SourceMetadata } from '../tools/credibility-scorer.js';
 import {
@@ -122,8 +123,11 @@ Be thorough but efficient - quality over quantity.`,
       const maxResults = input.maxResults ?? 20;
       const minCredibility = input.minCredibility ?? 0.3;
 
-      // Generate search queries
-      const queries = await this.generateSearchQueries(input.query);
+      // Find and execute relevant skills
+      const skillContext = await this.executeRelevantSkills(input);
+
+      // Generate search queries (now informed by skill insights)
+      const queries = await this.generateSearchQueries(input.query, skillContext);
       searchQueries.push(...queries);
 
       // Search web sources
@@ -273,13 +277,66 @@ Be thorough but efficient - quality over quantity.`,
   }
 
   /**
+   * Find and execute relevant skills for the evidence gathering task
+   */
+  private async executeRelevantSkills(input: EvidenceGathererInput): Promise<string> {
+    if (!this.context?.skillLibrary) {
+      return '';
+    }
+
+    const taskDescription = `Gather evidence for investment thesis analysis: ${input.query}`;
+
+    try {
+      const skills = await this.findRelevantSkills(taskDescription, 2);
+
+      if (skills.length === 0) {
+        return '';
+      }
+
+      console.log(`[EvidenceGatherer] Found ${skills.length} relevant skills: ${skills.map((s) => s.name).join(', ')}`);
+
+      const skillResults: Array<{ skill: SkillDefinition; result: SkillExecutionResult }> = [];
+
+      for (const skill of skills) {
+        const params = await this.extractParametersForSkill(skill, input);
+        console.log(`[EvidenceGatherer] Executing skill: ${skill.name}`);
+
+        const result = await this.executeSkill(skill.id, params);
+
+        if (result.success) {
+          skillResults.push({ skill, result });
+          console.log(`[EvidenceGatherer] Skill ${skill.name} completed successfully`);
+        } else {
+          console.warn(`[EvidenceGatherer] Skill ${skill.name} failed: ${result.error}`);
+        }
+      }
+
+      return this.buildSkillContextPrompt(skillResults);
+    } catch (error) {
+      console.error('[EvidenceGatherer] Error executing skills:', error);
+      return '';
+    }
+  }
+
+  /**
    * Generate varied search queries
    */
-  private async generateSearchQueries(baseQuery: string): Promise<string[]> {
-    const prompt = `Generate 5 different search queries to thoroughly research the following topic:
+  private async generateSearchQueries(baseQuery: string, skillContext?: string): Promise<string[]> {
+    let prompt = `Generate 5 different search queries to thoroughly research the following topic:
 
 Topic: ${baseQuery}
+`;
 
+    if (skillContext) {
+      prompt += `
+The following analytical frameworks have been applied and provide additional context:
+${skillContext}
+
+Use insights from these frameworks to create more targeted search queries.
+`;
+    }
+
+    prompt += `
 Create queries that:
 1. The main topic directly
 2. Market size / TAM aspects
