@@ -341,6 +341,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
               </h2>
               <ThesisSubmitForm
                 engagementId={engagementId}
+                initialThesis={engagement.investment_thesis?.summary}
                 onSubmitSuccess={handleResearchStart}
               />
             </div>

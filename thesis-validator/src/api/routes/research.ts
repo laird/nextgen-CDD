@@ -55,6 +55,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       preHandler: requireEngagementAccess('editor'),
       schema: {
         body: z.object({
+          thesis: z.string().optional(),
           depth: z.enum(['quick', 'standard', 'deep']).default('standard'),
           focus_areas: z.array(z.string()).optional(),
           include_comparables: z.boolean().default(true),
@@ -66,6 +67,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       request: FastifyRequest<{
         Params: { engagementId: string };
         Body: {
+          thesis?: string;
           depth: 'quick' | 'standard' | 'deep';
           focus_areas?: string[];
           include_comparables: boolean;
@@ -76,7 +78,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
     ) => {
       const user = (request as AuthenticatedRequest).user;
       const { engagementId } = request.params;
-      const config = request.body;
+      const { thesis: requestThesis, ...config } = request.body;
 
       const engagement = await getEngagement(engagementId);
       if (!engagement) {
@@ -87,12 +89,24 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
         return;
       }
 
-      if (!engagement.investment_thesis?.summary) {
+      // Use thesis from request body if provided, otherwise use stored thesis
+      const thesisSummary = requestThesis?.trim() || engagement.investment_thesis?.summary;
+      if (!thesisSummary) {
         reply.status(400).send({
           error: 'Bad Request',
           message: 'Investment thesis must be submitted before starting research',
         });
         return;
+      }
+
+      // Update engagement with thesis if provided in request
+      if (requestThesis?.trim() && !engagement.investment_thesis?.summary) {
+        engagement.investment_thesis = {
+          summary: requestThesis.trim(),
+          key_value_drivers: [],
+          key_risks: [],
+        };
+        void updateEngagement(engagementId, { investment_thesis: engagement.investment_thesis });
       }
 
       // Create job

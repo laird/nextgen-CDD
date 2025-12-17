@@ -7,11 +7,12 @@ import { useStartResearch } from '../../hooks/useResearch';
 
 interface ThesisSubmitFormProps {
   engagementId: string;
+  initialThesis?: string;
   onSubmitSuccess?: (jobId: string) => void;
 }
 
-export function ThesisSubmitForm({ engagementId, onSubmitSuccess }: ThesisSubmitFormProps) {
-  const [thesis, setThesis] = useState('');
+export function ThesisSubmitForm({ engagementId, initialThesis = '', onSubmitSuccess }: ThesisSubmitFormProps) {
+  const [thesis, setThesis] = useState(initialThesis);
   const { mutate: startResearch, isPending, error } = useStartResearch();
 
   const handleSubmit = (e: React.FormEvent) => {

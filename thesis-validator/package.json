@@ -33,6 +33,9 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.56",
+    "@ai-sdk/google-vertex": "^3.0.92",
+    "@ai-sdk/openai-compatible": "^1.0.29",
     "@anthropic-ai/sdk": "^0.30.0",
     "@anthropic-ai/vertex-sdk": "^0.14.0",
     "@fastify/cors": "^9.0.1",
@@ -43,6 +46,7 @@
     "@fastify/websocket": "^10.0.1",
     "@google-cloud/aiplatform": "^5.14.0",
     "@google-cloud/local-auth": "^3.0.1",
+    "ai": "^5.0.114",
     "bullmq": "^5.12.0",
     "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",

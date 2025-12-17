@@ -28,6 +28,7 @@ export {
   type AgentContext,
   type AgentResult,
   type AgentMessage,
+  type LLMError,
 } from './base-agent.js';
 
 // Conductor

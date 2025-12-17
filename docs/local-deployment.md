@@ -122,6 +122,7 @@ cp .env.example .env
 # 4. Install dependencies and initialize
 npm install
 npm run db:init
+npm run db:schema    # First install only - creates PostgreSQL tables
 npm run db:migrate
 npm run seed:skills
 
@@ -298,6 +299,7 @@ ANTHROPIC_MAX_TOKENS=8192
 # =============================================================================
 # Required External APIs
 # =============================================================================
+EMBEDDING_PROVIDER=openai
 OPENAI_API_KEY=sk-your-openai-key-here
 TAVILY_API_KEY=tvly-your-tavily-key-here
 
@@ -347,7 +349,11 @@ ENABLE_REAL_TIME_EXPERT_SUPPORT=true
 # Initialize vector database schema
 npm run db:init
 
-# Create PostgreSQL tables (engagements, hypotheses, evidence, etc.)
+# Create PostgreSQL tables (FIRST INSTALL ONLY)
+# This creates the initial database schema - only run once on fresh installs
+npm run db:schema
+
+# Run any pending migrations (run on first install and after updates)
 npm run db:migrate
 
 # Seed the skill library with default skills
@@ -731,6 +737,7 @@ lsof -i :3000
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-4-20250514` | Claude model to use |
 | `GOOGLE_CLOUD_PROJECT` | If vertex-ai | - | GCP project ID |
 | `GOOGLE_CLOUD_REGION` | If vertex-ai | `us-central1` | GCP region |
+| `EMBEDDING_PROVIDER` | No | `openai` | Embedding provider: `openai` or `vertex-ai` |
 | `OPENAI_API_KEY` | Yes | - | OpenAI API key for embeddings |
 | `TAVILY_API_KEY` | Yes | - | Tavily API key for web search |
 | `DATABASE_URL` | Yes | - | PostgreSQL connection string |

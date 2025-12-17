@@ -389,194 +389,175 @@ curl ${SERVICE_URL}/api/v1/skills
 
 After the backend is deployed, you need to initialize the database schema and seed the skill library.
 
-### 4.1 Run Database Migration
+### 4.1 Initialize Database Schema (First Install Only)
 
-Since Cloud SQL uses private IP, you need to connect via the Cloud SQL Auth Proxy.
+On first deployment, you must create the database schema. This only needs to be run once.
 
-#### Option A: Using Cloud Build (Recommended for Private IP)
-
-This is the simplest approach when Cloud SQL only has a private IP:
+You can run this locally connecting to Cloud SQL via the Cloud SQL Auth Proxy, or create a Cloud Run job:
 
 ```bash
-# Get the SQL connection name
-SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres --format="value(connectionName)")
-echo "SQL Connection: $SQL_CONNECTION"
+# Option 1: Using Cloud SQL Auth Proxy (local)
+# Install the proxy: https://cloud.google.com/sql/docs/postgres/sql-proxy
 
-# Run migrations via Cloud Build
-gcloud builds submit --config=thesis-validator/cloudbuild-migrate.yaml \
-  --substitutions=_SQL_CONNECTION=$SQL_CONNECTION
-```
+# Start proxy in background
+./cloud-sql-proxy ${SQL_CONNECTION} &
 
-#### Option B: From Cloud Shell (Only if Cloud SQL has Public IP)
-
-> **Note:** This option only works if your Cloud SQL instance has a public IP.
-> If you're using private IP only, use Option A above.
-
-```bash
-# 1. Download Cloud SQL Auth Proxy
-curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64
-chmod +x cloud-sql-proxy
-
-# 2. Get your SQL connection name
-SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres --format="value(connectionName)")
-echo "SQL Connection: $SQL_CONNECTION"
-
-# 3. Start the proxy in the background
-./cloud-sql-proxy $SQL_CONNECTION &
-
-# 4. Get your DB password from Secret Manager
-DB_PASSWORD=$(gcloud secrets versions access latest --secret=thesis-validator-db-password)
-
-# 5. Set DATABASE_URL and run migrations
+# Set environment
+export DATABASE_URL="postgresql://thesis_validator:${DB_PASSWORD}@localhost:5432/thesis_validator"
 cd thesis-validator
 npm install
-export DATABASE_URL="postgresql://thesis_validator:${DB_PASSWORD}@localhost:5432/thesis_validator"
+
+# Create database schema (FIRST INSTALL ONLY)
+npm run db:schema
+
+# Run any pending migrations
 npm run db:migrate
 
-# 6. Seed the skill library
-npm run seed:skills
-
-# 7. Stop the proxy when done
-pkill cloud-sql-proxy
+# Option 2: Via the API (if your app supports it)
+curl -X POST ${SERVICE_URL}/api/v1/admin/migrate \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
-#### Option B: From Local Machine
+### 4.2 Seed Skill Library
 
 ```bash
-# 1. Install Cloud SQL Auth Proxy
-# See: https://cloud.google.com/sql/docs/postgres/sql-proxy
-
-# 2. Authenticate with GCP
-gcloud auth application-default login
-
-# 3. Get connection info
-SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres --format="value(connectionName)")
-DB_PASSWORD=$(gcloud secrets versions access latest --secret=thesis-validator-db-password)
-
-# 4. Start proxy in background
-./cloud-sql-proxy $SQL_CONNECTION &
-
-# 5. Run migrations
-cd thesis-validator
-npm install
-export DATABASE_URL="postgresql://thesis_validator:${DB_PASSWORD}@localhost:5432/thesis_validator"
-npm run db:migrate
+# Via Cloud SQL Proxy (local)
 npm run seed:skills
 
-# 6. Stop the proxy
-pkill cloud-sql-proxy
-```
-
-### 4.2 Verify Database and Skills
-
-```bash
-# Test via the API (requires auth token)
-TOKEN=$(gcloud auth print-identity-token)
-curl -H "Authorization: Bearer $TOKEN" ${SERVICE_URL}/api/v1/skills
+# Or verify skills are seeded via API
+curl ${SERVICE_URL}/api/v1/skills
 ```
 
 ---
 
-## Step 5: Deploy Frontend (Cloud Run)
+## Step 5: Deploy Frontend (Cloud Storage + CDN)
 
-The frontend is deployed as a Cloud Run service, which provides better integration with
-GCP authentication when org policies restrict public access.
-
-### 5.1 Deploy Frontend via Cloud Build
+### 5.1 Create Cloud Storage Bucket
 
 ```bash
-# Get the backend API URL
-SERVICE_URL=$(gcloud run services describe thesis-validator --region=$REGION --format="value(status.url)")
-echo "API URL: $SERVICE_URL"
+FRONTEND_BUCKET="${PROJECT_ID}-dashboard-ui"
 
-# Deploy frontend to Cloud Run
-gcloud builds submit --config=dashboard-ui/cloudbuild.yaml \
-  --substitutions=_API_URL=$SERVICE_URL
+# Create bucket
+gsutil mb -l $REGION gs://${FRONTEND_BUCKET}
 
-# Get the frontend URL
-FRONTEND_URL=$(gcloud run services describe dashboard-ui --region=$REGION --format="value(status.url)")
-echo "Frontend URL: $FRONTEND_URL"
+# Configure for static website hosting
+gsutil web set -m index.html -e index.html gs://${FRONTEND_BUCKET}
+
+# Make publicly readable
+gsutil iam ch allUsers:objectViewer gs://${FRONTEND_BUCKET}
 ```
 
-### 5.2 Verify Frontend Deployment
+### 5.2 Build and Deploy Frontend
 
 ```bash
-# Test with authentication token
-FRONTEND_URL=$(gcloud run services describe dashboard-ui --region=$REGION --format="value(status.url)")
-TOKEN=$(gcloud auth print-identity-token --audiences=$FRONTEND_URL)
+cd dashboard-ui
 
-# Check health endpoint
-curl -s -H "Authorization: Bearer $TOKEN" "$FRONTEND_URL/health"
+# Install dependencies
+npm ci
 
-# Check main page
-curl -s -H "Authorization: Bearer $TOKEN" "$FRONTEND_URL/" | head -10
+# Create production environment file with API URL
+cat > .env.production << EOF
+VITE_API_URL=${SERVICE_URL}
+EOF
+
+# Build for production
+npm run build
+
+# Upload to Cloud Storage
+gsutil -m rsync -r -d dist/ gs://${FRONTEND_BUCKET}/
+
+# Set cache headers for static assets
+gsutil -m setmeta -h "Cache-Control:public, max-age=31536000" \
+  "gs://${FRONTEND_BUCKET}/assets/**"
+
+# Set short cache for index.html
+gsutil setmeta -h "Cache-Control:no-cache, max-age=0" \
+  "gs://${FRONTEND_BUCKET}/index.html"
 ```
 
-### 5.3 Access Frontend in Browser
-
-Since the frontend requires GCP IAM authentication, use one of these methods:
-
-**Option A: Local Proxy (Recommended for Development)**
-
-From your local machine with gcloud installed:
+### 5.3 Set Up Cloud CDN with Load Balancer
 
 ```bash
-gcloud auth login
-gcloud config set project $PROJECT_ID
-gcloud run services proxy dashboard-ui --region=$REGION --port=8080
-# Open http://localhost:8080 in your browser
+# Create backend bucket for CDN
+gcloud compute backend-buckets create dashboard-ui-backend \
+  --gcs-bucket-name=${FRONTEND_BUCKET} \
+  --enable-cdn \
+  --cache-mode=CACHE_ALL_STATIC
+
+# Create URL map
+gcloud compute url-maps create dashboard-ui-lb \
+  --default-backend-bucket=dashboard-ui-backend
+
+# Create HTTP proxy
+gcloud compute target-http-proxies create dashboard-ui-http-proxy \
+  --url-map=dashboard-ui-lb
+
+# Reserve a static IP
+gcloud compute addresses create dashboard-ui-ip --global
+
+# Create forwarding rule
+gcloud compute forwarding-rules create dashboard-ui-http \
+  --global \
+  --address=dashboard-ui-ip \
+  --target-http-proxy=dashboard-ui-http-proxy \
+  --ports=80
+
+# Get the IP address
+FRONTEND_IP=$(gcloud compute addresses describe dashboard-ui-ip \
+  --global --format="value(address)")
+echo "Frontend IP: $FRONTEND_IP"
+echo "Access at: http://${FRONTEND_IP}"
 ```
-
-**Option B: Set Up Identity-Aware Proxy (IAP)**
-
-For production browser access without proxy, configure IAP:
-
-1. Enable IAP API: `gcloud services enable iap.googleapis.com`
-2. Configure OAuth consent screen in Cloud Console
-3. Enable IAP on the Cloud Run services
-
-See: https://cloud.google.com/iap/docs/enabling-cloud-run
 
 ---
 
-## Step 6: Configure Custom Domain (Optional)
+## Step 6: Configure Domain and HTTPS
 
-Both frontend and backend are Cloud Run services with automatic HTTPS on their `.run.app` domains.
-For custom domains:
+### 6.1 Set Up DNS
 
-### 6.1 Map Custom Domains to Cloud Run Services
+Point your domain to the frontend IP address:
+
+```
+A    dashboard.yourdomain.com    -> $FRONTEND_IP
+A    api.yourdomain.com          -> (Cloud Run provides this automatically)
+```
+
+For the backend, you can use the Cloud Run custom domain mapping:
 
 ```bash
-# Map custom domain to backend API
+# Map custom domain to backend
 gcloud run domain-mappings create \
-  --service=thesis-validator \
-  --domain=api.yourdomain.com \
-  --region=$REGION
-
-# Map custom domain to frontend
-gcloud run domain-mappings create \
-  --service=dashboard-ui \
-  --domain=dashboard.yourdomain.com \
-  --region=$REGION
-
-# Get the DNS records to configure
-gcloud run domain-mappings describe \
+  --service=$SERVICE_NAME \
   --domain=api.yourdomain.com \
   --region=$REGION
 ```
 
-### 6.2 Configure DNS
-
-Add the DNS records shown by the domain-mappings command to your DNS provider.
-Cloud Run will automatically provision SSL certificates.
-
-### 6.3 Update CORS
+### 6.2 Set Up HTTPS for Frontend
 
 ```bash
-# Update CORS in backend to allow your custom domain
-gcloud run services update thesis-validator \
+DOMAIN="dashboard.yourdomain.com"
+
+# Create managed SSL certificate
+gcloud compute ssl-certificates create dashboard-ui-cert \
+  --domains=$DOMAIN \
+  --global
+
+# Create HTTPS proxy
+gcloud compute target-https-proxies create dashboard-ui-https-proxy \
+  --url-map=dashboard-ui-lb \
+  --ssl-certificates=dashboard-ui-cert
+
+# Create HTTPS forwarding rule
+gcloud compute forwarding-rules create dashboard-ui-https \
+  --global \
+  --address=dashboard-ui-ip \
+  --target-https-proxy=dashboard-ui-https-proxy \
+  --ports=443
+
+# Update CORS in backend to allow your domain
+gcloud run services update $SERVICE_NAME \
   --region=$REGION \
-  --set-env-vars="CORS_ORIGINS=https://dashboard.yourdomain.com"
+  --set-env-vars="CORS_ORIGINS=https://${DOMAIN}"
 ```
 
 ---
