@@ -124,10 +124,11 @@ describe('Engagement Models', () => {
       name: 'Project Alpha',
       client_name: 'Client Corp',
       deal_type: 'buyout' as const,
+      sector: 'technology' as const,
       target_company: {
         name: 'TechCorp Inc',
         description: 'Enterprise software company',
-        industry: 'Technology',
+        sector: 'technology',
         geography: 'North America',
       },
       investment_thesis: 'Strong market position with growth potential',

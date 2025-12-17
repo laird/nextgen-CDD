@@ -34,6 +34,15 @@ vi.mock('@anthropic-ai/vertex-sdk', () => ({
       }),
     },
   })),
+  AnthropicVertex: vi.fn().mockImplementation(() => ({
+    messages: {
+      create: vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: 'Mock vertex response' }],
+        usage: { input_tokens: 10, output_tokens: 20 },
+        stop_reason: 'end_turn',
+      }),
+    },
+  })),
 }));
 
 vi.mock('../../src/services/google-auth.js', () => ({
@@ -91,7 +100,7 @@ describe('LLMProvider', () => {
 
       const provider = new LLMProvider(config);
 
-      expect(provider.getModel()).toBe('claude-sonnet-4-20250514');
+      expect(provider.getModel()).toBe('claude-opus-4-5@20251101');
     });
   });
 

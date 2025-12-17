@@ -11,6 +11,7 @@
  * 7. Generate stress test report
  */
 
+import { generateText } from 'ai';
 import {
   HypothesisRepository,
   ContradictionRepository,
@@ -20,7 +21,7 @@ import {
 import type { EngagementEvent } from '../models/index.js';
 import { createEvent, createHypothesisUpdatedEvent } from '../models/events.js';
 import { webSearch } from '../tools/web-search.js';
-import { getLLMProvider } from '../services/llm-provider.js';
+import { createModel } from '../services/model-provider.js';
 
 // Initialize repositories
 const hypothesisRepo = new HypothesisRepository();
@@ -385,10 +386,11 @@ export class StressTestWorkflow {
     const numQueries = intensity === 'aggressive' ? 8 : intensity === 'moderate' ? 5 : 3;
 
     try {
-      const llm = await getLLMProvider();
-      const response = await llm.createMessage({
-        model: llm.getModel(),
-        maxTokens: 1024,
+      const model = createModel();
+      const result = await generateText({
+        model,
+        maxOutputTokens: 1024,
+        temperature: 0.5,
         messages: [
           {
             role: 'user',
@@ -407,12 +409,9 @@ Be specific and creative. Output as JSON array:
 ["query1", "query2", ...]`,
           },
         ],
-        temperature: 0.5,
       });
 
-      // Extract text content from response
-      const textContent = response.content.find((c) => c.type === 'text');
-      const text = textContent && 'text' in textContent ? textContent.text : '';
+      const text = result.text;
       const match = text.match(/\[[\s\S]*\]/);
       if (match) {
         const queries = JSON.parse(match[0]) as string[];
@@ -443,10 +442,11 @@ Be specific and creative. Output as JSON array:
     bearCaseTheme?: string;
   }> {
     try {
-      const llm = await getLLMProvider();
-      const response = await llm.createMessage({
-        model: llm.getModel(),
-        maxTokens: 1024,
+      const model = createModel();
+      const result = await generateText({
+        model,
+        maxOutputTokens: 1024,
+        temperature: 0.2,
         messages: [
           {
             role: 'user',
@@ -471,12 +471,9 @@ Output as JSON:
 }`,
           },
         ],
-        temperature: 0.2,
       });
 
-      // Extract text content from response
-      const textContent = response.content.find((c) => c.type === 'text');
-      const text = textContent && 'text' in textContent ? textContent.text : '';
+      const text = result.text;
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         const analysis = JSON.parse(match[0]) as {
@@ -512,10 +509,11 @@ Output as JSON:
     contradictions: Array<{ description: string; severity: string }>
   ): Promise<StressTestOutput['riskFactors']> {
     try {
-      const llm = await getLLMProvider();
-      const response = await llm.createMessage({
-        model: llm.getModel(),
-        maxTokens: 1024,
+      const model = createModel();
+      const result = await generateText({
+        model,
+        maxOutputTokens: 1024,
+        temperature: 0.3,
         messages: [
           {
             role: 'user',
@@ -534,12 +532,9 @@ Output as JSON array:
 [{ "category": "...", "description": "...", "severity": "low|medium|high", "mitigation": "..." }]`,
           },
         ],
-        temperature: 0.3,
       });
 
-      // Extract text content from response
-      const textContent = response.content.find((c) => c.type === 'text');
-      const text = textContent && 'text' in textContent ? textContent.text : '';
+      const text = result.text;
       const match = text.match(/\[[\s\S]*\]/);
       if (match) {
         return JSON.parse(match[0]) as StressTestOutput['riskFactors'];
@@ -561,10 +556,11 @@ Output as JSON array:
     if (challengedHypotheses.length === 0) return [];
 
     try {
-      const llm = await getLLMProvider();
-      const response = await llm.createMessage({
-        model: llm.getModel(),
-        maxTokens: 1024,
+      const model = createModel();
+      const result = await generateText({
+        model,
+        maxOutputTokens: 1024,
+        temperature: 0.4,
         messages: [
           {
             role: 'user',
@@ -579,12 +575,9 @@ Output as JSON array:
 ["theme1", "theme2", ...]`,
           },
         ],
-        temperature: 0.4,
       });
 
-      // Extract text content from response
-      const textContent = response.content.find((c) => c.type === 'text');
-      const text = textContent && 'text' in textContent ? textContent.text : '';
+      const text = result.text;
       const match = text.match(/\[[\s\S]*\]/);
       if (match) {
         return JSON.parse(match[0]) as string[];

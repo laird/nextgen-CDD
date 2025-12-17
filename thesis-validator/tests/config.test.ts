@@ -20,16 +20,16 @@ describe('Default Configuration', () => {
 
   it('should have llm configuration', () => {
     expect(defaultConfig.llm).toBeDefined();
-    expect(defaultConfig.llm.model).toBe('claude-sonnet-4-20250514');
+    expect(defaultConfig.llm.model).toBe('claude-opus-4-5@20251101');
     expect(defaultConfig.llm.maxTokens).toBe(4096);
     expect(defaultConfig.llm.temperature).toBe(0.7);
   });
 
   it('should have embedding configuration', () => {
     expect(defaultConfig.embedding).toBeDefined();
-    expect(defaultConfig.embedding.provider).toBe('openai');
-    expect(defaultConfig.embedding.model).toBe('text-embedding-3-small');
-    expect(defaultConfig.embedding.dimensions).toBe(1536);
+    expect(defaultConfig.embedding.provider).toBe('vertex-ai');
+    expect(defaultConfig.embedding.model).toBe('text-embedding-005');
+    expect(defaultConfig.embedding.dimensions).toBe(768);
   });
 
   it('should have ruvector configuration', () => {

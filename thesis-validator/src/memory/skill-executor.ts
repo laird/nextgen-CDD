@@ -1,12 +1,14 @@
 /**
  * Skill Executor - LLM-based skill execution
  *
- * Executes skill prompts with parameters via the LLM provider.
+ * Executes skill prompts with parameters via the Vercel AI SDK model provider.
  */
 
+import { generateText } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { SkillExecutor, SkillExecutionContext } from './skill-library.js';
 import type { SkillExecutionResult } from '../models/index.js';
-import { LLMProvider, getLLMProviderConfig } from '../services/llm-provider.js';
+import { createModel, getModelProviderConfig } from '../services/model-provider.js';
 
 /**
  * Build a prompt from skill implementation and parameters
@@ -73,11 +75,10 @@ function parseSkillOutput(content: string): unknown {
 }
 
 /**
- * Create an LLM-based skill executor
+ * Create an LLM-based skill executor using Vercel AI SDK
  */
 export function createLLMSkillExecutor(): SkillExecutor {
-  let llmProvider: LLMProvider | null = null;
-  let initialized = false;
+  let model: LanguageModel | null = null;
 
   return async (
     implementation: string,
@@ -86,41 +87,27 @@ export function createLLMSkillExecutor(): SkillExecutor {
   ): Promise<SkillExecutionResult> => {
     const startTime = Date.now();
 
-    // Lazy initialize LLM provider
-    if (!initialized) {
-      const config = getLLMProviderConfig();
-      llmProvider = new LLMProvider(config);
-      await llmProvider.initialize();
-      initialized = true;
-    }
-
-    if (!llmProvider) {
-      return {
-        skill_id: '',
-        success: false,
-        output: null,
-        execution_time_ms: Date.now() - startTime,
-        error: 'LLM provider not initialized',
-      };
+    // Lazy initialize model
+    if (!model) {
+      const config = getModelProviderConfig();
+      model = createModel({
+        ...config,
+        model: context.model ?? config.model ?? 'claude-opus-4-5@20251101',
+      });
     }
 
     try {
       const prompt = buildSkillPrompt(implementation, parameters, context);
 
-      const model = context.model ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-opus-4-5@20251101';
-      const response = await llmProvider.createMessage({
+      const result = await generateText({
         model,
-        maxTokens: 4096,
-        temperature: 0.3,
         system: 'You are an expert analyst executing structured analytical frameworks. Provide thorough, evidence-based analysis.',
         messages: [{ role: 'user', content: prompt }],
+        maxOutputTokens: 4096,
+        temperature: 0.3,
       });
 
-      const content = response.content
-        .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
-        .map((block) => block.text)
-        .join('\n');
-
+      const content = result.text;
       const output = parseSkillOutput(content);
 
       return {
@@ -129,8 +116,8 @@ export function createLLMSkillExecutor(): SkillExecutor {
         output,
         execution_time_ms: Date.now() - startTime,
         metadata: {
-          tokens_used: response.usage.input_tokens + response.usage.output_tokens,
-          model_used: model,
+          tokens_used: (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0),
+          model_used: context.model ?? 'claude-opus-4-5@20251101',
         },
       };
     } catch (error) {

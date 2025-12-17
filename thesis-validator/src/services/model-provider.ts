@@ -36,8 +36,8 @@ export interface ModelProviderConfig {
  * Default models for each provider
  */
 const DEFAULT_MODELS: Record<ModelProviderType, string> = {
-  anthropic: 'claude-sonnet-4-20250514',
-  'vertex-ai': 'claude-sonnet-4-20250514',
+  anthropic: 'claude-opus-4-5@20251101',
+  'vertex-ai': 'claude-opus-4-5@20251101',
   ollama: 'llama3.2',
 };
 
