@@ -80,6 +80,7 @@ export {
   type SkillExecutionContext,
   type SkillExecutor,
 } from './skill-library.js';
+export { createLLMSkillExecutor } from './skill-executor.js';
 
 /**
  * Initialize all memory systems
