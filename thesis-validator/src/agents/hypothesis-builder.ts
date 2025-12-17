@@ -227,8 +227,7 @@ Output structured JSON with clear hierarchy and relationships.`,
    * Decompose thesis into structured components
    */
   private async decomposeThesis(input: HypothesisBuilderInput): Promise<HypothesisDecomposition> {
-    // Tools disabled temporarily due to AI SDK Vertex bug
-    // const tools = this.getTools();
+    const tools = this.getTools();
 
     const prompt = `Decompose the following investment thesis into testable hypotheses:
 
@@ -261,10 +260,7 @@ Output as JSON:
   "key_questions": ["..."]
 }`;
 
-    // Temporarily use callLLM without tools to work around AI SDK Vertex tool schema bug
-    // TODO: Revert to callLLMWithTools when the bug is fixed
-    // See: https://github.com/vercel/ai/issues/9761
-    const response = await this.callLLM(prompt);
+    const response = await this.callLLMWithTools(prompt, tools);
     const decomposition = this.parseJSON<HypothesisDecomposition>(response.content);
 
     if (!decomposition) {
@@ -504,11 +500,9 @@ Output as JSON array:
   }
 
   /**
-   * Get builder tools
-   * TODO: Re-enable when AI SDK Vertex tool bug is fixed
+   * Get builder tools for thesis decomposition
    */
-  // @ts-expect-error Temporarily unused due to AI SDK Vertex tool bug
-  private _getTools(): AgentTool[] {
+  private getTools(): AgentTool[] {
     return [
       createTool(
         'search_similar_theses',

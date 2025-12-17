@@ -192,8 +192,7 @@ Output your plans in structured JSON format with clear step definitions.`,
    * Create a workflow plan
    */
   private async createPlan(input: ConductorInput): Promise<WorkflowPlan> {
-    // Tools disabled temporarily due to AI SDK Vertex bug
-    // const tools = this.getTools();
+    const tools = this.getTools();
 
     const prompt = `Create a detailed workflow plan for the following task:
 
@@ -224,10 +223,7 @@ Output as JSON with this structure:
   ]
 }`;
 
-    // Temporarily use callLLM without tools to work around AI SDK Vertex tool schema bug
-    // TODO: Revert to callLLMWithTools when the bug is fixed
-    // See: https://github.com/vercel/ai/issues/9761
-    const response = await this.callLLM(prompt);
+    const response = await this.callLLMWithTools(prompt, tools);
     const planData = this.parseJSON<{
       name: string;
       description: string;
@@ -432,11 +428,9 @@ Output as JSON:
   }
 
   /**
-   * Get conductor tools
-   * TODO: Re-enable when AI SDK Vertex tool bug is fixed
+   * Get conductor tools for workflow planning
    */
-  // @ts-expect-error Temporarily unused due to AI SDK Vertex tool bug
-  private _getTools(): AgentTool[] {
+  private getTools(): AgentTool[] {
     return [
       createTool(
         'list_available_agents',

@@ -10,6 +10,7 @@
  */
 
 import { generateText, stepCountIs, type CoreMessage, type LanguageModel, type ToolSet } from 'ai';
+import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import { z } from 'zod';
 import type { DealMemory } from '../memory/deal-memory.js';
 import type { InstitutionalMemory } from '../memory/institutional-memory.js';
@@ -547,6 +548,7 @@ Output as JSON object with parameter names as keys:`;
 
   /**
    * Call LLM with tools using Vercel AI SDK
+   * For Vertex AI, routes to direct Anthropic SDK due to AI SDK bug #9761
    */
   protected async callLLMWithTools(
     prompt: string,
@@ -560,6 +562,13 @@ Output as JSON object with parameter names as keys:`;
     toolCalls: Array<{ tool: string; input: Record<string, unknown>; output: unknown }>;
     tokensUsed: { input: number; output: number };
   }> {
+    // Route to direct Anthropic SDK for Vertex AI to work around AI SDK bug
+    // The AI SDK's Vertex Anthropic provider doesn't serialize tool schemas correctly
+    // See: https://github.com/vercel/ai/issues/9761
+    if (this.getProviderType() === 'vertex-ai') {
+      return this.callLLMWithToolsVertexDirect(prompt, agentTools, options);
+    }
+
     this.updateStatus('thinking');
 
     // Build messages array
@@ -634,6 +643,168 @@ Output as JSON object with parameter names as keys:`;
       this.emitLLMError(llmError);
       throw new Error(llmError.userMessage);
     }
+  }
+
+  /**
+   * Call LLM with tools using Anthropic Vertex SDK directly
+   * This bypasses the AI SDK's broken tool serialization for Vertex AI
+   * See: https://github.com/vercel/ai/issues/9761
+   */
+  protected async callLLMWithToolsVertexDirect(
+    prompt: string,
+    agentTools: AgentTool[],
+    options?: {
+      includeHistory?: boolean;
+      maxIterations?: number;
+    }
+  ): Promise<{
+    content: string;
+    toolCalls: Array<{ tool: string; input: Record<string, unknown>; output: unknown }>;
+    tokensUsed: { input: number; output: number };
+  }> {
+    this.updateStatus('thinking');
+
+    // Create Anthropic Vertex client
+    const projectId = process.env['GOOGLE_CLOUD_PROJECT'];
+    const region = process.env['GOOGLE_CLOUD_REGION'] ?? process.env['GOOGLE_CLOUD_LOCATION'] ?? 'us-east5';
+
+    if (!projectId) {
+      throw new Error('GOOGLE_CLOUD_PROJECT environment variable is required for Vertex AI');
+    }
+
+    const client = new AnthropicVertex({
+      projectId,
+      region,
+    });
+
+    // Convert AgentTools to Anthropic Tool format
+    // Using inline type to avoid version conflicts between @anthropic-ai/sdk versions
+    const anthropicTools = agentTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: {
+        type: 'object' as const,
+        properties: (tool.inputSchema['properties'] as Record<string, unknown>) ?? {},
+        required: (tool.inputSchema['required'] as string[]) ?? [],
+      },
+    }));
+
+    // Build tool handlers map
+    const toolHandlers = new Map<string, (input: Record<string, unknown>) => Promise<unknown>>();
+    for (const tool of agentTools) {
+      toolHandlers.set(tool.name, tool.handler);
+    }
+
+    // Build messages - using 'as const' compatible types
+    type VertexMessageParam = { role: 'user' | 'assistant'; content: string | unknown[] };
+    const messages: VertexMessageParam[] = [];
+
+    if (options?.includeHistory) {
+      for (const msg of this.conversationHistory) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+
+    messages.push({ role: 'user', content: prompt });
+
+    const toolResults: Array<{ tool: string; input: Record<string, unknown>; output: unknown }> = [];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let finalContent = '';
+    let iterations = 0;
+    const maxIterations = options?.maxIterations ?? 10;
+
+    // Agentic loop - keep calling until no more tool_use blocks
+    while (iterations < maxIterations) {
+      iterations++;
+
+      // Cast messages to any to work around type version mismatches between
+      // @anthropic-ai/sdk and @anthropic-ai/vertex-sdk's bundled version
+      const response = await client.messages.create({
+        model: this.config.model,
+        max_tokens: this.config.maxTokens,
+        system: this.config.systemPrompt,
+        messages: messages as any,
+        tools: anthropicTools as any,
+      });
+
+      totalInputTokens += response.usage.input_tokens;
+      totalOutputTokens += response.usage.output_tokens;
+
+      // Check if there are any tool_use blocks
+      const toolUseBlocks = response.content.filter(
+        (block) => block.type === 'tool_use'
+      ) as Array<{ type: 'tool_use'; id: string; name: string; input: unknown }>;
+
+      // Extract text content
+      const textBlocks = response.content.filter(
+        (block) => block.type === 'text'
+      ) as Array<{ type: 'text'; text: string }>;
+      finalContent = textBlocks.map((b) => b.text).join('\n');
+
+      // If no tool calls or stop reason is end_turn, we're done
+      if (toolUseBlocks.length === 0 || response.stop_reason === 'end_turn') {
+        break;
+      }
+
+      // Add assistant message with tool_use blocks
+      // Cast content to unknown[] to satisfy our message type
+      messages.push({ role: 'assistant', content: response.content as unknown[] });
+
+      // Execute tools and build tool_result blocks
+      const toolResultBlocks: Array<{
+        type: 'tool_result';
+        tool_use_id: string;
+        content: string;
+      }> = [];
+
+      for (const toolUse of toolUseBlocks) {
+        this.updateStatus('searching');
+        const handler = toolHandlers.get(toolUse.name);
+        if (!handler) {
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify({ error: `Unknown tool: ${toolUse.name}` }),
+          });
+          continue;
+        }
+
+        try {
+          const input = toolUse.input as Record<string, unknown>;
+          const output = await handler(input);
+          toolResults.push({ tool: toolUse.name, input, output });
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: typeof output === 'string' ? output : JSON.stringify(output),
+          });
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          toolResultBlocks.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify({ error: errorMsg }),
+          });
+        }
+      }
+
+      // Add user message with tool results
+      messages.push({ role: 'user', content: toolResultBlocks });
+    }
+
+    // Update conversation history
+    this.conversationHistory.push({ role: 'user', content: prompt });
+    this.conversationHistory.push({ role: 'assistant', content: finalContent });
+
+    return {
+      content: finalContent,
+      toolCalls: toolResults,
+      tokensUsed: {
+        input: totalInputTokens,
+        output: totalOutputTokens,
+      },
+    };
   }
 
   /**
