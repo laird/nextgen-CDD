@@ -227,7 +227,8 @@ Output structured JSON with clear hierarchy and relationships.`,
    * Decompose thesis into structured components
    */
   private async decomposeThesis(input: HypothesisBuilderInput): Promise<HypothesisDecomposition> {
-    const tools = this.getTools();
+    // Tools disabled temporarily due to AI SDK Vertex bug
+    // const tools = this.getTools();
 
     const prompt = `Decompose the following investment thesis into testable hypotheses:
 
@@ -504,8 +505,10 @@ Output as JSON array:
 
   /**
    * Get builder tools
+   * TODO: Re-enable when AI SDK Vertex tool bug is fixed
    */
-  private getTools(): AgentTool[] {
+  // @ts-expect-error Temporarily unused due to AI SDK Vertex tool bug
+  private _getTools(): AgentTool[] {
     return [
       createTool(
         'search_similar_theses',

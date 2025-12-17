@@ -192,7 +192,8 @@ Output your plans in structured JSON format with clear step definitions.`,
    * Create a workflow plan
    */
   private async createPlan(input: ConductorInput): Promise<WorkflowPlan> {
-    const tools = this.getTools();
+    // Tools disabled temporarily due to AI SDK Vertex bug
+    // const tools = this.getTools();
 
     const prompt = `Create a detailed workflow plan for the following task:
 
@@ -432,8 +433,10 @@ Output as JSON:
 
   /**
    * Get conductor tools
+   * TODO: Re-enable when AI SDK Vertex tool bug is fixed
    */
-  private getTools(): AgentTool[] {
+  // @ts-expect-error Temporarily unused due to AI SDK Vertex tool bug
+  private _getTools(): AgentTool[] {
     return [
       createTool(
         'list_available_agents',
