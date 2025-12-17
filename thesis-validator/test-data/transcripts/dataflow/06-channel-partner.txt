@@ -1,0 +1,31 @@
+Expert Call Transcript - DataFlow Analytics Channel Partner
+Date: December 15, 2024
+Interviewee: David Park, Managing Director at Accenture Data Practice
+
+Interviewer: David, Accenture has been implementing DataFlow for clients. What's your experience?
+
+David Park: We've done about 15 DataFlow implementations over the past two years. It's become one of our recommended platforms for mid-market clients, particularly in retail, healthcare, and financial services.
+
+Interviewer: What makes it attractive from a systems integrator perspective?
+
+David Park: Implementation velocity. We can typically get a client productive in 4-6 weeks versus 4-6 months for a traditional data warehouse project. That means faster revenue recognition for us and faster value for clients. It's a win-win.
+
+Interviewer: How does the partnership work commercially?
+
+David Park: We have a standard SI agreement with them. We get deal registration, training resources, and a 15% referral fee on first-year contract value. Honestly, the commercial terms are less mature than what we have with Snowflake or Microsoft, but they're improving.
+
+Interviewer: What do clients say after implementation?
+
+David Park: Generally very positive. The most common feedback is surprise at how quickly their teams become self-sufficient. The flip side is that some clients feel like they don't need ongoing SI support, which affects our services revenue. It's almost too easy to use.
+
+Interviewer: Any implementation challenges?
+
+David Park: Data quality issues surface quickly because DataFlow's ML models are sensitive to dirty data. We've had to build additional data cleansing workflows for several clients. Also, their integration with legacy systems like SAP and Oracle ERP is not as mature as competitors. We've done custom integration work that should really be product features.
+
+Interviewer: How do you see the partnership evolving?
+
+David Park: We're pushing them to build more enterprise features. If they get FedRAMP certification, that opens up the entire federal market which is huge for us. We've also suggested they build tighter Salesforce and ServiceNow integrations - that's what our clients keep asking for.
+
+Interviewer: Would you recommend DataFlow to a PE firm looking at the company?
+
+David Park: Yes, with caveats. The product is solid and the market is real. They need to invest in partner enablement and enterprise features. But the fundamentals are strong.

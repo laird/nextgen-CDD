@@ -1,0 +1,27 @@
+Expert Call Transcript - DataFlow Analytics Competitive Intelligence
+Date: December 14, 2024
+Interviewee: Michael Torres, Former SVP Product at Databricks (now consultant)
+
+Interviewer: Michael, you competed against DataFlow when you were at Databricks. How do you assess their position?
+
+Michael Torres: DataFlow is a real competitor in the mid-market. They're not going to win deals at Fortune 100 companies - they just don't have the scale, the compliance certifications, or the global support infrastructure. But for companies in the $500M to $5B revenue range, they're winning a lot of deals.
+
+Interviewer: What do they do better than Databricks?
+
+Michael Torres: User experience, hands down. Databricks requires data engineering expertise to get value. DataFlow's self-service capabilities let business analysts work directly with data without writing code. That's a big deal for companies without large data teams.
+
+Interviewer: Where are they weaker?
+
+Michael Torres: Enterprise readiness. When a Fortune 500 company asks about SOC 2 Type II, HIPAA, FedRAMP, disaster recovery across regions - DataFlow struggles to check all those boxes. They're getting there, but they're 2-3 years behind the leaders on compliance.
+
+Interviewer: How does pricing compare?
+
+Michael Torres: They're cheaper upfront but the TCO picture is more nuanced. Databricks' compute efficiency at scale is unmatched - we'd often beat them on large workloads even at higher list prices. But for workloads under 100TB, DataFlow is genuinely more cost-effective.
+
+Interviewer: What would it take for DataFlow to break into the enterprise segment?
+
+Michael Torres: They need three things. First, a real partnership with one of the hyperscalers - either AWS, Azure, or GCP marketplace presence. Second, they need at least 5 reference customers with $1M+ ACV. Third, they need to pass the security audits that large enterprises require. Each of those is achievable in 12-18 months with the right investment.
+
+Interviewer: Are you concerned about them as a competitor going forward?
+
+Michael Torres: They're not an existential threat to Databricks, but they're capturing a real segment of the market that we weren't serving well. The unified platform approach resonates with mid-market buyers who don't want to become data engineering shops.

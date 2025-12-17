@@ -1,0 +1,27 @@
+Expert Call Transcript - DataFlow Analytics Customer Reference
+Date: December 11, 2024
+Interviewee: Sarah Martinez, VP of Data Engineering at RetailMax
+
+Interviewer: Sarah, can you describe your experience implementing DataFlow at RetailMax?
+
+Sarah Martinez: We went live with DataFlow 18 months ago after evaluating Snowflake, Databricks, and building in-house. The implementation was remarkably smooth - we had our first production dashboards running in under two weeks.
+
+Interviewer: What problem were you trying to solve?
+
+Sarah Martinez: We had data sprawled across 23 different systems - point of sale, inventory, e-commerce, supply chain. Our previous solution required a team of 6 data engineers just to maintain the pipelines. With DataFlow, we've reduced that to 2 people and they're actually building new capabilities instead of firefighting.
+
+Interviewer: How would you rate the platform reliability?
+
+Sarah Martinez: Exceptional. We've had 99.97% uptime over 18 months. There was one incident last March where we saw some latency during a major data migration, but their support team was incredibly responsive. Had it resolved in under 2 hours.
+
+Interviewer: What about the AI features they market heavily?
+
+Sarah Martinez: The anomaly detection is genuinely impressive. It caught a inventory counting error that would have cost us $2M in write-offs if we hadn't caught it early. The forecasting models have improved our demand planning accuracy by about 23% compared to our old system.
+
+Interviewer: Any concerns or areas for improvement?
+
+Sarah Martinez: A few things. Their documentation could be better - we had to figure out some advanced configurations through trial and error. Also, their pricing model is consumption-based which makes budgeting unpredictable. We've been pushing them to offer committed capacity pricing.
+
+Interviewer: Would you recommend DataFlow to other enterprises?
+
+Sarah Martinez: Without hesitation, yes. The ROI has been substantial. We estimate we've saved $1.8M annually in infrastructure and headcount costs, plus the revenue impact from better decision-making.

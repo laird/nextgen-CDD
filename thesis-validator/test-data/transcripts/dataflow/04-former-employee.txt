@@ -1,0 +1,31 @@
+Expert Call Transcript - DataFlow Analytics Former Employee
+Date: December 13, 2024
+Interviewee: Rachel Kim, Former VP of Engineering (2021-2024)
+
+Interviewer: Rachel, you spent three years at DataFlow. What's your honest assessment of the company?
+
+Rachel Kim: Look, I'm proud of what we built there. The core technology is genuinely differentiated. But there are some real challenges that investors should understand.
+
+Interviewer: Let's start with the technology. What makes it special?
+
+Rachel Kim: The query optimizer is probably 2 years ahead of anyone else. We built it from scratch using techniques from distributed systems research that big cloud providers haven't adopted yet. The result is queries that run 3-5x faster at the same cost. That's real and sustainable.
+
+Interviewer: What about the challenges you mentioned?
+
+Rachel Kim: Technical debt is accumulating faster than we're paying it down. We grew the engineering team from 40 to 180 in two years and code quality suffered. There are parts of the system I wouldn't want to touch because they're so fragile. That's going to bite them eventually.
+
+Interviewer: Were there any specific incidents that concerned you?
+
+Rachel Kim: We had two near-misses on data security. Nothing breached, but the architecture wasn't designed with enterprise security requirements from day one. We retrofitted a lot of it, but it's patch on top of patch in some areas.
+
+Interviewer: Why did you leave?
+
+Rachel Kim: Honestly, burnout and disagreement with the founder on technical direction. Marcus is brilliant at sales and vision but sometimes overrules engineering on feasibility. We committed to features that we knew we couldn't deliver on time. I got tired of the death marches.
+
+Interviewer: How would you characterize the company culture?
+
+Rachel Kim: High performance but unsustainable. The best engineers love it, the average ones burn out. Turnover in engineering was around 25% annually when I left. That's high for the industry.
+
+Interviewer: Despite all this, would you invest in DataFlow?
+
+Rachel Kim: Probably yes, actually. The market opportunity is huge and the core tech really is special. They just need better operational discipline and more experienced enterprise leadership. With the right PE partner providing that, they could be a $1B+ ARR business.

@@ -1,0 +1,31 @@
+Expert Call Transcript - DataFlow Analytics Market Analysis
+Date: December 17, 2024
+Interviewee: Amanda Liu, Principal at McKinsey Digital Practice
+
+Interviewer: Amanda, you advise enterprises on data strategy. How does DataFlow fit into the market?
+
+Amanda Liu: The data analytics market is at an inflection point. Enterprises are overwhelmed by the complexity of modern data stacks. DataFlow's thesis - that you can simplify the stack with a unified platform - resonates strongly with CIOs we talk to.
+
+Interviewer: What's driving that sentiment?
+
+Amanda Liu: Cost and talent scarcity. Our research shows the average enterprise spends $4M annually just maintaining their data infrastructure, not counting new initiatives. And the talent shortage is acute - there are 3 open data engineering roles for every qualified candidate.
+
+Interviewer: How does DataFlow address these challenges?
+
+Amanda Liu: They reduce the skills barrier significantly. A traditional data warehouse project requires specialists in ETL, data modeling, cloud infrastructure, and BI tooling. DataFlow collapses that into a single platform that a competent business analyst can operate. That's transformative for mid-market companies.
+
+Interviewer: What about competition from the big cloud providers?
+
+Amanda Liu: That's the key strategic question. AWS, Azure, and GCP are all building similar unified analytics capabilities. The hyperscalers have distribution advantages that are hard to overcome. DataFlow's window to establish market position is probably 2-3 years before the clouds catch up.
+
+Interviewer: What would make DataFlow attractive as an acquisition target?
+
+Amanda Liu: The talent and the technology. Their ML engineering team is genuinely world-class - we've seen their work and it's sophisticated. A hyperscaler or enterprise software company would pay a premium for that IP and those people.
+
+Interviewer: What's your investment thesis on the space?
+
+Amanda Liu: We're bullish on unified analytics platforms as a category. DataFlow specifically has strong technology and growing market share. The risks are execution and competition. With the right capital and governance, they could be a category leader. Without it, they might get squeezed by the hyperscalers.
+
+Interviewer: What metrics would you watch closely?
+
+Amanda Liu: Net revenue retention above 130% indicates strong expansion within accounts. Gross margin expansion shows operating leverage kicking in. And watch enterprise wins against established vendors - that proves the product can compete at scale.

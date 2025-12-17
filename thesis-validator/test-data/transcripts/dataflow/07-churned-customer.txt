@@ -1,0 +1,31 @@
+Expert Call Transcript - DataFlow Analytics Churned Customer
+Date: December 16, 2024
+Interviewee: Jennifer Walsh, CTO at FinanceFirst (switched to Snowflake)
+
+Interviewer: Jennifer, FinanceFirst used DataFlow for about a year before switching. What happened?
+
+Jennifer Walsh: We were an early adopter, signed up when they had maybe 30 customers. Initially it was great - the platform was exactly what we needed for our size. But as we scaled, we started hitting limitations.
+
+Interviewer: What kind of limitations?
+
+Jennifer Walsh: Performance at scale was the biggest issue. When we crossed about 50TB of data, query performance degraded significantly. Their support team was helpful but ultimately said our use case was pushing the limits of their architecture. That's not acceptable for a financial services company.
+
+Interviewer: Were there other factors in the decision?
+
+Jennifer Walsh: Compliance was a growing concern. We're regulated by the SEC and OCC, and DataFlow couldn't provide the audit trails and data lineage documentation our regulators required. They said it was on the roadmap, but we couldn't wait.
+
+Interviewer: How was the transition to Snowflake?
+
+Jennifer Walsh: Painful and expensive. About 4 months of parallel running and $400K in migration costs. But now we have a platform that can scale with us and meets our compliance requirements.
+
+Interviewer: In hindsight, was DataFlow a mistake?
+
+Jennifer Walsh: Not entirely. They got us started on our data journey at a fraction of what Snowflake would have cost initially. For the first year, the economics made sense. But they weren't transparent about their scaling limitations - that's what frustrated me.
+
+Interviewer: What would have kept you as a customer?
+
+Jennifer Walsh: Better communication about roadmap timelines. If they had said "enterprise scale is 18 months away," we could have planned accordingly. Instead we kept getting "it's coming soon" until we lost patience.
+
+Interviewer: Would you recommend DataFlow to other companies?
+
+Jennifer Walsh: For companies under 20TB of data without heavy compliance requirements, yes. They're genuinely good for that segment. But if you're planning to scale significantly, understand you may outgrow them.
