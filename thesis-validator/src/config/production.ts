@@ -51,7 +51,7 @@ const productionOverrides: Partial<Config> = {
 
   llm: {
     provider: (process.env['LLM_PROVIDER'] ?? 'anthropic') as 'anthropic' | 'vertex-ai',
-    model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
+    model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-opus-4-5@20251101',
     maxTokens: 4096,
     temperature: 0.5, // Lower temperature for more consistent outputs
     timeout: 120000, // Longer timeout for production
@@ -61,7 +61,7 @@ const productionOverrides: Partial<Config> = {
     projectId: process.env['GOOGLE_CLOUD_PROJECT'] ?? '',
     region: process.env['GOOGLE_CLOUD_REGION'] ?? 'us-central1',
     modelMapping: {
-      'claude-sonnet-4-20250514': 'claude-sonnet-4-20250514',
+      'claude-opus-4-5@20251101': 'claude-opus-4-5@20251101',
       'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-v2@20241022',
       'claude-3-haiku-20240307': 'claude-3-haiku@20240307',
       'claude-3-opus-20240229': 'claude-3-opus@20240229',

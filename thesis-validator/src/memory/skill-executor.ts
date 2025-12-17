@@ -107,7 +107,7 @@ export function createLLMSkillExecutor(): SkillExecutor {
     try {
       const prompt = buildSkillPrompt(implementation, parameters, context);
 
-      const model = context.model ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514';
+      const model = context.model ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-opus-4-5@20251101';
       const response = await llmProvider.createMessage({
         model,
         maxTokens: 4096,

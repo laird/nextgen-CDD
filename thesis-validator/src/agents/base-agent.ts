@@ -96,7 +96,7 @@ export interface AgentMessage {
  * Default agent configuration
  */
 const defaultConfig: Partial<AgentConfig> = {
-  model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
+  model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-opus-4-5@20251101',
   maxTokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] ?? '8192', 10),
   temperature: 0.7,
   llmProvider: (process.env['LLM_PROVIDER'] as LLMProviderType) ?? 'anthropic',

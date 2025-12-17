@@ -18,7 +18,7 @@ export const defaultConfig = {
   // LLM Configuration
   llm: {
     provider: (process.env['LLM_PROVIDER'] ?? 'anthropic') as 'anthropic' | 'vertex-ai',
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-opus-4-5@20251101',
     maxTokens: 4096,
     temperature: 0.7,
     timeout: 60000,
@@ -30,7 +30,7 @@ export const defaultConfig = {
     region: process.env['GOOGLE_CLOUD_REGION'] ?? 'us-central1',
     // Model mapping for Vertex AI (uses same Claude models)
     modelMapping: {
-      'claude-sonnet-4-20250514': 'claude-sonnet-4-20250514',
+      'claude-opus-4-5@20251101': 'claude-opus-4-5@20251101',
       'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-v2@20241022',
       'claude-3-haiku-20240307': 'claude-3-haiku@20240307',
       'claude-3-opus-20240229': 'claude-3-opus@20240229',

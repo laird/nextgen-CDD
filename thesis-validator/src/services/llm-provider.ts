@@ -79,7 +79,7 @@ export interface LLMResponse {
  * Default configuration values
  */
 const DEFAULT_CONFIG: Partial<LLMProviderConfig> = {
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-opus-4-5@20251101',
   maxTokens: 4096,
   temperature: 0.7,
   timeout: 60000,
@@ -262,7 +262,7 @@ export function getLLMProviderConfig(): LLMProviderConfig {
 
   const config: LLMProviderConfig = {
     provider,
-    model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-sonnet-4-20250514',
+    model: process.env['ANTHROPIC_MODEL'] ?? process.env['VERTEX_AI_MODEL'] ?? 'claude-opus-4-5@20251101',
     maxTokens: parseInt(process.env['ANTHROPIC_MAX_TOKENS'] ?? '4096', 10),
     temperature: parseFloat(process.env['LLM_TEMPERATURE'] ?? '0.7'),
     timeout: parseInt(process.env['LLM_TIMEOUT'] ?? '60000', 10),
