@@ -1,0 +1,37 @@
+# Cloud Build ignore file
+# Note: We need package-lock.json for npm ci, so don't ignore it
+
+# Git files
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test and development files
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# Local environment files
+.env.local
+.env.*.local
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Build outputs (will be created during build)
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+.tmp/

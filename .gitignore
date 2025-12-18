@@ -9,6 +9,8 @@ dist/
 *.d.ts
 *.d.ts.map
 !eslint.config.js
+!dashboard-ui/proxy-server.js
+!dashboard-ui/public/config.js
 
 # Environment files
 .env

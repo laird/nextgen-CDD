@@ -12,6 +12,9 @@ substitutions:
   _REGION: us-central1
   _SERVICE_NAME: dashboard-ui
   _API_URL: ''
+  _BACKEND_URL: 'https://thesis-validator-792842314050.us-central1.run.app'
+  # Runtime API URL for browser-side calls (for gcloud run services proxy usage)
+  _RUNTIME_API_URL: 'http://localhost:8081'
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -63,6 +66,10 @@ steps:
       - '10'
       - '--concurrency'
       - '80'
+      - '--set-env-vars'
+      - 'BACKEND_URL=${_BACKEND_URL},API_URL=${_RUNTIME_API_URL}'
+      - '--service-account'
+      - '${PROJECT_NUMBER}-compute@developer.gserviceaccount.com'
     waitFor: ['push-image']
 
 images:

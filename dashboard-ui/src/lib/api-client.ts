@@ -3,7 +3,34 @@
  */
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Runtime config interface (injected via config.js in production)
+declare global {
+  interface Window {
+    __CONFIG__?: {
+      API_URL?: string;
+    };
+  }
+}
+
+// Priority: runtime config > env var > relative URLs (nginx proxy) > localhost dev
+function getApiBaseUrl(): string {
+  // Runtime config (set at container startup, allows override without rebuild)
+  if (typeof window !== 'undefined' && window.__CONFIG__?.API_URL) {
+    return window.__CONFIG__.API_URL;
+  }
+  // Build-time env var
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // Production: use relative URLs (proxied through nginx)
+  if (import.meta.env.PROD) {
+    return '';
+  }
+  // Development fallback
+  return 'http://localhost:3000';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class ThesisValidatorClient {
   private client: AxiosInstance;

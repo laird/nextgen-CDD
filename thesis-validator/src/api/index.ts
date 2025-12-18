@@ -45,7 +45,12 @@ export const defaultAPIConfig: APIConfig = {
   host: '0.0.0.0',
   port: 3000,
   logLevel: 'info',
-  corsOrigins: ['http://localhost:3000', 'http://localhost:5173'],
+  corsOrigins: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://localhost:8081',
+  ],
   rateLimitMax: 100,
   rateLimitWindow: '1 minute',
 };
