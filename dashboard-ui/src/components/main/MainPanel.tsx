@@ -24,7 +24,6 @@ export function MainPanel({ currentView, onViewChange }: MainPanelProps) {
   const handleCreateEngagement = (data: EngagementFormData) => {
     createEngagement(data, {
       onSuccess: (response) => {
-        console.log('Engagement Created:', response);
         // Navigate to the newly created engagement
         if (onViewChange && response.engagement?.id) {
           // Force a small delay or ensure state update priority if needed, but standard should work.

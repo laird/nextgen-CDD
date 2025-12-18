@@ -93,7 +93,7 @@ test.describe('Expert Calls Workflow', () => {
 
     // Fill in engagement form
     await page.fill('input#target_company', TEST_COMPANY);
-    await page.fill('input#sector', TEST_SECTOR);
+    await page.selectOption('select#sector', { label: TEST_SECTOR });
 
     // Optional: fill description
     const descriptionInput = page.locator('textarea#description');
@@ -102,7 +102,7 @@ test.describe('Expert Calls Workflow', () => {
     }
 
     // Submit the form
-    await page.click('button[type="submit"]:has-text("Create"), button[type="submit"]:has-text("Save")');
+    await page.click('button[type="submit"]:has-text("Create Engagement")');
 
     // Wait for navigation to engagement detail
     await expect(page).toHaveURL(/\/engagements\/[a-f0-9-]+/, { timeout: 10000 });
@@ -116,7 +116,7 @@ test.describe('Expert Calls Workflow', () => {
     console.log(`Created engagement: ${engagementId}`);
 
     // Verify engagement is shown
-    await expect(page.locator(`text=${TEST_COMPANY}`)).toBeVisible();
+    await expect(page.locator('h1').filter({ hasText: TEST_COMPANY })).toBeVisible();
   });
 
   test('should submit investment thesis', async ({ page }) => {

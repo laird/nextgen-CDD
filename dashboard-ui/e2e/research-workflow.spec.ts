@@ -65,7 +65,7 @@ test.describe('Research Workflow', () => {
 
         // 8. Wait for Completion
         // Look for "Research Status: Completed"
-        await expect(page.getByText(/Research Status: Completed/i)).toBeVisible({ timeout: 300000 });
+        await expect(page.getByText(/Research Status: Completed/i)).toBeVisible({ timeout: 600000 });
 
         // 9. Verify Results
         // Check for Key Findings

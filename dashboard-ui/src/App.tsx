@@ -16,6 +16,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize view from URL
   const [currentView, setCurrentView] = useState('dashboard');
   const [isDark, setIsDark] = useState(false);
 
@@ -40,8 +41,46 @@ function App() {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/') {
+        setCurrentView('dashboard');
+      } else if (path === '/new-engagement') {
+        setCurrentView('new-engagement');
+      } else if (path.startsWith('/engagements/')) {
+        const id = path.replace('/engagements/', '');
+        setCurrentView(`engagement-${id}`);
+      } else {
+        const view = path.substring(1); // remove leading slash
+        setCurrentView(view);
+      }
+    };
+
+    // Handle initial load
+    handlePopState();
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleNavigate = (view: string) => {
     setCurrentView(view);
+
+    // Update URL
+    let url = '/';
+    if (view === 'dashboard') {
+      url = '/';
+    } else if (view === 'new-engagement') {
+      url = '/new-engagement';
+    } else if (view.startsWith('engagement-')) {
+      const id = view.replace('engagement-', '');
+      url = `/engagements/${id}`;
+    } else {
+      url = `/${view}`;
+    }
+
+    window.history.pushState(null, '', url);
   };
 
   return (
