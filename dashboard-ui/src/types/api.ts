@@ -32,6 +32,7 @@ export interface Engagement {
     target_irr?: number;
     hold_period_years?: number;
     value_creation_levers?: string[];
+    key_questions?: string[];
   };
 }
 

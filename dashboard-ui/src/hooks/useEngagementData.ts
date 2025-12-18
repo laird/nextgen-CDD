@@ -1,8 +1,19 @@
+import { useState, useEffect } from 'react';
 import { useEngagement } from './useEngagements';
 import { useHypothesisTree } from './useHypotheses';
 import { useEvidence, useEvidenceStats } from './useEvidence';
+import { useContradictions, useContradictionStats } from './useContradictions';
 import { useEngagementWebSocket } from './useEngagementWebSocket';
-import type { Engagement, HypothesisNode, HypothesisTree, Evidence, EvidenceStats } from '../types/api';
+import { useExpertCalls } from './useExpertCalls';
+import type {
+    Engagement,
+    HypothesisNode,
+    HypothesisTree,
+    Evidence,
+    EvidenceStats,
+    Contradiction,
+    ContradictionStats
+} from '../types/api';
 
 // UI-compatible Hypothesis type with recursion
 export interface UIHypothesis {
@@ -19,7 +30,10 @@ export interface EngagementData {
     rawHypotheses: HypothesisNode[]; // Original flat list
     hypothesisTree: HypothesisTree | undefined;
     evidence: Evidence[];
-    stats: EvidenceStats | undefined;
+    evidenceStats: EvidenceStats | undefined;
+    contradictions: Contradiction[];
+    contradictionStats: ContradictionStats | undefined;
+    researchProgress: number | null;
     isLoading: boolean;
     error: unknown;
     isConnected: boolean; // WS status
@@ -32,7 +46,6 @@ export interface EngagementData {
  */
 function buildTreeFromDag(nodes: HypothesisNode[]): UIHypothesis[] {
     if (!nodes || nodes.length === 0) return [];
-
 
     const nodeMap = new Map<string, UIHypothesis>();
 
@@ -70,12 +83,21 @@ function buildTreeFromDag(nodes: HypothesisNode[]): UIHypothesis[] {
  * Aggregated hook to fetch all context data for the engagement sidebar
  */
 export function useEngagementData(engagementId: string | null, token?: string): EngagementData {
+    const [researchProgress, setResearchProgress] = useState<number | null>(null);
+
     // 1. WebSocket Integration (Side Effect: Invalidates Queries)
-    const { isConnected } = useEngagementWebSocket({
+    const { isConnected, lastMessage } = useEngagementWebSocket({
         engagementId: engagementId ?? undefined,
         token,
         enabled: !!engagementId
     });
+
+    // Track research progress from WS events
+    useEffect(() => {
+        if (lastMessage?.type === 'event' && lastMessage.payload?.type === 'research.progress') {
+            setResearchProgress(lastMessage.payload.data.progress);
+        }
+    }, [lastMessage]);
 
     // 2. Fetch Data
     const {
@@ -102,18 +124,63 @@ export function useEngagementData(engagementId: string | null, token?: string): 
         error: evidenceError
     } = useEvidence(engagementId, { limit: 50 });
 
+    const {
+        data: contradictionsData,
+        isLoading: loadingContradictions,
+        error: contradictionsError
+    } = useContradictions(engagementId, { status: 'unresolved' });
+
+    const {
+        data: contradictionStats,
+        isLoading: loadingContradictionStats,
+        error: contradictionStatsError
+    } = useContradictionStats(engagementId);
+
+    // NEW: Fetch Expert Calls
+    const {
+        data: expertCallsData,
+        isLoading: loadingExpertCalls,
+    } = useExpertCalls(engagementId, { limit: 100 });
+
     // 3. Transform Data
     const uiHypotheses = buildTreeFromDag(tree?.hypotheses ?? []);
 
+    // NEW: Merge evidence and expert calls
+    // Transform ExpertCall to Evidence shape for UI compatibility
+    const expertEvidence: Evidence[] = (expertCallsData?.expertCalls ?? []).map(call => ({
+        id: call.id,
+        engagementId: call.engagementId,
+        content: `Expert Interview with ${call.intervieweeName || 'Expert'} (${call.intervieweeTitle || 'N/A'})\n\n${call.status === 'completed' ? 'Transcript available.' : 'Processing...'}`,
+        sourceType: 'expert',
+        url: call.transcriptUrl || '',
+        metadata: {
+            filename: call.filename,
+            callDate: call.callDate,
+            duration: call.durationMinutes,
+            status: call.status
+        },
+        confidence: 1.0,
+        created_at: call.createdAt,
+        createdAt: call.createdAt,
+        updatedAt: call.updatedAt,
+        sentiment: 'neutral',
+        relevance: 1.0
+    }));
+
+    const combinedEvidence = [...(evidenceData?.evidence ?? []), ...expertEvidence];
+
     return {
-        engagement: engagementData?.engagement,
+        engagement: engagementData,
         hypotheses: uiHypotheses,
         rawHypotheses: tree?.hypotheses ?? [],
         hypothesisTree: tree,
-        evidence: evidenceData?.evidence ?? [],
-        stats: evidenceStats?.stats,
-        isLoading: loadingEngagement || loadingTree || loadingStats || loadingEvidence,
-        error: engagementError || treeError || statsError || evidenceError,
+        evidence: combinedEvidence,
+        evidenceStats: evidenceStats?.stats,
+        contradictions: contradictionsData?.contradictions ?? [],
+        contradictionStats: contradictionStats?.stats,
+        researchProgress,
+        isLoading: loadingEngagement || loadingTree || loadingStats || loadingEvidence || loadingContradictions || loadingContradictionStats || loadingExpertCalls,
+        error: engagementError || treeError || statsError || evidenceError || contradictionsError || contradictionStatsError,
         isConnected
     };
 }

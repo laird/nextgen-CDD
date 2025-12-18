@@ -17,6 +17,7 @@ import {
 } from '../../repositories/index.js';
 import { getPool } from '../../db/index.js';
 import { executeStressTestWorkflow } from '../../workflows/index.js';
+import { getResearchQueue } from '../../services/job-queue.js';
 
 const stressTestRepo = new StressTestRepository();
 
@@ -263,8 +264,15 @@ export async function registerStressTestRoutes(fastify: FastifyInstance): Promis
         ...(hypothesisIds ? { hypothesisIds } : {}),
       });
 
-      // Start stress test asynchronously
-      void executeStressTestAsync(stressTest.id, engagementId, intensity, hypothesisIds);
+      // Start stress test asynchronously via Queue
+      const queue = getResearchQueue();
+      await queue.addJob(stressTest.id, {
+        type: 'stress_test',
+        engagementId,
+        stressTestId: stressTest.id,
+        config: { intensity },
+        ...(hypothesisIds ? { hypothesisIds } : {}),
+      });
 
       reply.status(202).send({
         message: 'Stress test started',
@@ -322,27 +330,4 @@ export async function registerStressTestRoutes(fastify: FastifyInstance): Promis
 /**
  * Execute stress test asynchronously and update repository
  */
-async function executeStressTestAsync(
-  stressTestId: string,
-  engagementId: string,
-  intensity: StressTestIntensity,
-  hypothesisIds?: string[]
-): Promise<void> {
-  try {
-    // Mark as running
-    await stressTestRepo.markRunning(stressTestId);
 
-    // Execute the workflow
-    const result = await executeStressTestWorkflow({
-      engagementId,
-      ...(hypothesisIds ? { hypothesisIds } : {}),
-      config: { intensity },
-    });
-
-    // Mark as completed with results
-    await stressTestRepo.markCompleted(stressTestId, result as unknown as Record<string, unknown>);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    await stressTestRepo.markFailed(stressTestId, errorMessage);
-  }
-}

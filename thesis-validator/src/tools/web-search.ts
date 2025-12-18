@@ -100,10 +100,9 @@ export class WebSearchService {
       });
 
       if (!httpResponse.ok) {
-        // Handle Quota Exceeded specifically
+        // Handle Quota Exceeded/Rate Limit specifically
         if (httpResponse.status === 432 || httpResponse.status === 429) {
-          console.warn(`[WebSearchService] Tavily API Quota Exceeded (${httpResponse.status}). Falling back to mock search.`);
-          return this.mockSearch(query, opts, startTime);
+          throw new Error(`Tavily API Rate Limit/Quota Exceeded (${httpResponse.status})`);
         }
 
         const errorText = await httpResponse.text();

@@ -37,16 +37,27 @@ function createRedisConnection(): Redis {
 /**
  * Research job data
  */
-export interface ResearchJobData {
-  engagementId: string;
-  thesis: string;
-  config: {
-    maxHypotheses?: number;
-    enableDeepDive?: boolean;
-    confidenceThreshold?: number;
-    searchDepth?: 'quick' | 'standard' | 'thorough';
+export type ResearchJobData =
+  | {
+    type: 'research';
+    engagementId: string;
+    thesis: string;
+    config: {
+      maxHypotheses?: number;
+      enableDeepDive?: boolean;
+      confidenceThreshold?: number;
+      searchDepth?: 'quick' | 'standard' | 'thorough';
+    };
+  }
+  | {
+    type: 'stress_test';
+    engagementId: string;
+    stressTestId: string; // Needed to update status in DB
+    config: {
+      intensity: 'light' | 'moderate' | 'aggressive';
+    };
+    hypothesisIds?: string[];
   };
-}
 
 /**
  * Research job queue
@@ -61,10 +72,10 @@ export class ResearchJobQueue {
     this.queue = new Queue<ResearchJobData>('research-jobs', {
       connection,
       defaultJobOptions: {
-        attempts: 3,
+        attempts: 100, // Retry up to 100 times (approx 1.5 hours of retries, or indefinitely if we want)
         backoff: {
-          type: 'exponential',
-          delay: 60000, // Start at 1 minute
+          type: 'fixed',
+          delay: 60000, // Retry every 1 minute
         },
         removeOnComplete: {
           age: 86400 * 7, // Keep completed jobs for 7 days

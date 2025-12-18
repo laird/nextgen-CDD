@@ -46,6 +46,7 @@ export interface EngagementDTO {
   thesis?: {
     statement: string;
     submitted_at: number;
+    key_questions?: string[];
   };
   created_by: string;
   created_at: number;
@@ -178,7 +179,7 @@ export class EngagementRepository {
     sector: string;
     description: string;
     status: string;
-    thesis: { statement: string; submitted_at: number };
+    thesis: { statement: string; submitted_at: number; key_questions?: string[] };
     config: Record<string, unknown>;
   }>): Promise<EngagementDTO | null> {
     const pool = getPool();

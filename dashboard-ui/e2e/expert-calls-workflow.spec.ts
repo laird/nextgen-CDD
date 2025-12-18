@@ -127,7 +127,10 @@ test.describe('Expert Calls Workflow', () => {
     await expect(page.locator(`text=${TEST_COMPANY}`)).toBeVisible({ timeout: 10000 });
 
     // Click on Research tab
-    await page.click('button:has-text("Research")');
+    // Click on Research tab if needed
+    if (!await page.getByRole('heading', { name: 'Submit Investment Thesis' }).isVisible()) {
+      await page.getByRole('button', { name: 'Research Workflow' }).click({ force: true });
+    }
 
     // Find thesis textarea
     const thesisInput = page.locator('textarea#thesis, textarea[placeholder*="thesis"]');

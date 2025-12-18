@@ -124,6 +124,7 @@ export const InvestmentThesisSchema = z.object({
   target_irr: z.number().optional(),
   hold_period_years: z.number().optional(),
   value_creation_levers: z.array(z.string()).optional(),
+  key_questions: z.array(z.string()).optional(),
 });
 export type InvestmentThesis = z.infer<typeof InvestmentThesisSchema>;
 

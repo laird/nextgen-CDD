@@ -16,7 +16,7 @@ import type {
   CausalRelationship,
 } from '../models/hypothesis.js';
 import { createHypothesisUpdatedEvent, createEvent } from '../models/events.js';
-import { HypothesisRepository } from '../repositories/index.js';
+import { HypothesisRepository, EngagementRepository } from '../repositories/index.js';
 
 /**
  * Hypothesis builder input
@@ -54,6 +54,7 @@ export interface HypothesisBuilderOutput {
  */
 export class HypothesisBuilderAgent extends BaseAgent {
   private hypothesisRepo = new HypothesisRepository();
+  private engagementRepo = new EngagementRepository();
 
   constructor() {
     super({
@@ -178,6 +179,26 @@ Output structured JSON with clear hierarchy and relationships.`,
             strength: rel.strength,
             reasoning: rel.reasoning,
           });
+        }
+      }
+
+      // Store key questions in Engagement repository
+      if (decomposition.key_questions && decomposition.key_questions.length > 0) {
+        try {
+          const currentEngagement = await this.engagementRepo.getById(this.context.engagementId);
+          if (currentEngagement?.thesis) {
+            await this.engagementRepo.update(this.context.engagementId, {
+              thesis: {
+                statement: currentEngagement.thesis.statement,
+                submitted_at: currentEngagement.thesis.submitted_at,
+                key_questions: decomposition.key_questions,
+              }
+            });
+            this.updateStatus('thinking', 'Key questions saved to engagement');
+          }
+        } catch (err) {
+          console.error('Failed to save key questions to engagement:', err);
+          // Non-critical error, continue
         }
       }
 

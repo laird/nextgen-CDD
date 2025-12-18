@@ -18,6 +18,8 @@ export function ThreePanelLayout({
 }: ThreePanelLayoutProps) {
   const [leftCollapsed, setLeftCollapsed] = useState(defaultLeftCollapsed);
   const [rightCollapsed, setRightCollapsed] = useState(defaultRightCollapsed);
+  const [rightPanelWidth, setRightPanelWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'main' | 'context'>('main');
   const [isMobile, setIsMobile] = useState(false);
@@ -36,9 +38,48 @@ export function ThreePanelLayout({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Handle resizing logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      // Calculate new width based on mouse position from right edge of screen
+      const newWidth = window.innerWidth - e.clientX;
+
+      // Apply constraints
+      if (newWidth >= 250 && newWidth <= 600) {
+        setRightPanelWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default'; // Cleanup style
+      document.body.style.userSelect = 'auto';
+    };
+  }, [isResizing]);
+
   // Close mobile menu on navigation
   const handleMobileMenuClose = () => {
     setMobileMenuOpen(false);
+  };
+
+  const startResizing = () => {
+    setIsResizing(true);
   };
 
   return (
@@ -59,21 +100,19 @@ export function ThreePanelLayout({
           <div className="flex gap-1">
             <button
               onClick={() => setMobileView('main')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                mobileView === 'main'
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mobileView === 'main'
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                   : 'text-surface-600 dark:text-surface-400'
-              }`}
+                }`}
             >
               Chat
             </button>
             <button
               onClick={() => setMobileView('context')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                mobileView === 'context'
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${mobileView === 'context'
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                   : 'text-surface-600 dark:text-surface-400'
-              }`}
+                }`}
             >
               Details
             </button>
@@ -154,9 +193,21 @@ export function ThreePanelLayout({
           className={`
             relative flex flex-col border-l border-surface-200 dark:border-surface-700
             bg-white dark:bg-surface-800 transition-all duration-300 ease-in-out
-            ${rightCollapsed ? 'w-0 border-l-0' : 'w-80'}
           `}
+          style={{ width: rightCollapsed ? 0 : rightPanelWidth }}
         >
+          {/* Drag Handle */}
+          {!rightCollapsed && (
+            <div
+              onMouseDown={startResizing}
+              className={`
+                absolute top-0 bottom-0 left-0 w-1 cursor-ew-resize z-20 hover:bg-primary-500/50 transition-colors
+                ${isResizing ? 'bg-primary-500' : 'bg-transparent'}
+              `}
+              title="Drag to resize"
+            />
+          )}
+
           {!rightCollapsed && (
             <div className="flex-1 overflow-hidden">
               {rightPanel}
@@ -171,7 +222,7 @@ export function ThreePanelLayout({
               rounded-full border border-surface-200 bg-white shadow-sm
               hover:bg-surface-50 dark:border-surface-600 dark:bg-surface-700
               dark:hover:bg-surface-600 transition-colors
-              ${rightCollapsed ? '-left-3' : '-left-3'}
+              -left-3
             `}
             aria-label={rightCollapsed ? 'Expand details panel' : 'Collapse details panel'}
           >

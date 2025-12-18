@@ -149,6 +149,7 @@ export async function registerResearchRoutes(fastify: FastifyInstance): Promise<
       // Enqueue job to BullMQ for worker processing
       const queue = getResearchQueue();
       await queue.addJob(jobRecord.id, {
+        type: 'research',
         engagementId,
         thesis: thesisSummary,
         config: {

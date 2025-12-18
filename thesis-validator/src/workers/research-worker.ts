@@ -8,7 +8,8 @@ import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import type { ResearchJobData } from '../services/job-queue.js';
 import type { ProgressEvent, EngagementEvent, Engagement } from '../models/index.js';
-import { executeResearchWorkflow } from '../workflows/index.js';
+import { executeResearchWorkflow, executeStressTestWorkflow } from '../workflows/index.js';
+import { StressTestRepository } from '../repositories/index.js';
 import { getPool } from '../db/index.js';
 
 // Redis connection from environment
@@ -150,6 +151,23 @@ function mapPhaseToProgress(phase: string): { phase: string; progress: number } 
  * Process research job
  */
 async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
+  // Handle Stress Test Jobs
+  if (job.data.type === 'stress_test') {
+    return processStressTestJob(job as Job<Extract<ResearchJobData, { type: 'stress_test' }>>);
+  }
+
+  // Handle Research Jobs (Default/Legacy)
+  // Ensure we treat it as research job safely
+  if (job.data.type === 'research') {
+    return processDeepResearchJob(job as Job<Extract<ResearchJobData, { type: 'research' }>>);
+  }
+
+  // Fallback for any legacy jobs currently in queue without 'type' (if any)
+  // assuming they match the old interface which is 'research'
+  return processDeepResearchJob(job as unknown as Job<Extract<ResearchJobData, { type: 'research' }>>);
+}
+
+async function processDeepResearchJob(job: Job<Extract<ResearchJobData, { type: 'research' }>>): Promise<void> {
   const { engagementId, thesis, config } = job.data;
   const pool = getPool();
 
@@ -329,6 +347,73 @@ export class ResearchWorker {
    */
   getWorker(): Worker<ResearchJobData> {
     return this.worker;
+  }
+}
+
+
+
+// ... (existing imports)
+
+/**
+ * Process stress test job
+ */
+async function processStressTestJob(job: Job<Extract<ResearchJobData, { type: 'stress_test' }>>): Promise<void> {
+  const { engagementId, stressTestId, config, hypothesisIds } = job.data;
+  const stressTestRepo = new StressTestRepository();
+
+  console.log(`[ResearchWorker] Processing stress test ${stressTestId} for engagement ${engagementId}`);
+
+  try {
+    // Update status to running
+    await stressTestRepo.markRunning(stressTestId);
+
+    // Update progress
+    await job.updateProgress(10);
+    await publishProgress(job.id!, 'status_update', {
+      status: 'running',
+      message: 'Stress test started',
+      progress: 10
+    });
+
+    // Execute workflow
+    const result = await executeStressTestWorkflow({
+      engagementId,
+      ...(hypothesisIds ? { hypothesisIds } : {}),
+      config: {
+        intensity: config.intensity
+      },
+      onEvent: (event) => {
+        // Relay events to Redis if needed, or just log
+        // StressTestWorkflow emits granular events we could forward
+      }
+    });
+
+    // Mark completed
+    await stressTestRepo.markCompleted(stressTestId, result as unknown as Record<string, unknown>);
+
+    await job.updateProgress(100);
+    await publishProgress(job.id!, 'completed', {
+      status: 'completed',
+      message: 'Stress test completed successfully',
+      progress: 100
+    });
+
+    console.log(`[ResearchWorker] Stress test ${stressTestId} completed`);
+
+  } catch (error) {
+    console.error(`[ResearchWorker] Stress test ${stressTestId} failed:`, error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Check if this is a retryable error that will be retried by BullMQ
+    // If attempts remain, we might not want to mark as failed in DB yet?
+    // But UI needs to know something is wrong. 
+    // Usually we mark 'failed' only on final attempt?
+    // For now, let's mark failed. If BullMQ retries, it will mark 'running' again.
+
+    await stressTestRepo.markFailed(stressTestId, errorMessage);
+
+    // Rethrow to let BullMQ handle retry logic
+    throw error;
   }
 }
 

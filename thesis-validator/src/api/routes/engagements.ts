@@ -61,6 +61,7 @@ function dtoToApiEngagement(dto: EngagementDTO): Engagement & { target: { name: 
       summary: dto.thesis.statement,
       key_value_drivers: [],
       key_risks: [],
+      key_questions: dto.thesis.key_questions ?? [],
     } : undefined,
     thesis: dto.thesis ? {
       statement: dto.thesis.statement,

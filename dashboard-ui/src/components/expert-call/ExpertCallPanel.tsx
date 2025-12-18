@@ -2,8 +2,9 @@
  * Main container component for expert call functionality
  */
 import { useState } from 'react';
-import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
 import { useExpertCalls, useExpertCall, useProcessTranscript, useProcessTranscriptBatch, useDeleteExpertCall } from '../../hooks/useExpertCalls';
+import { useEngagement } from '../../hooks/useEngagements';
 import { TranscriptUpload } from './TranscriptUpload';
 import { ExpertCallResults } from './ExpertCallResults';
 import { ExpertCallHistory } from './ExpertCallHistory';
@@ -24,6 +25,7 @@ export function ExpertCallPanel({ engagementId, onHypothesisClick }: ExpertCallP
 
   // Queries
   const { data: callsData, isLoading: isLoadingCalls } = useExpertCalls(engagementId);
+  const { data: engagement } = useEngagement(engagementId);
   const { data: selectedCallData, isLoading: isLoadingCall } = useExpertCall(
     engagementId,
     selectedCallId
@@ -165,6 +167,21 @@ export function ExpertCallPanel({ engagementId, onHypothesisClick }: ExpertCallP
           >
             Dismiss
           </button>
+        </div>
+      )}
+
+      {/* Suggested Questions */}
+      {engagement?.investment_thesis?.key_questions && engagement.investment_thesis.key_questions.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">Suggested Questions</h3>
+          </div>
+          <ul className="list-disc list-inside space-y-1">
+            {engagement.investment_thesis.key_questions.map((q, i) => (
+              <li key={i} className="text-sm text-blue-800 dark:text-blue-200">{q}</li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -259,8 +259,8 @@ export class StressTestWorkflow {
     // Calculate overall vulnerability
     const overallVulnerability = results.length > 0
       ? results.reduce((sum, r) =>
-          sum + (r.status === 'failed' ? 1 : r.status === 'challenged' ? 0.5 : 0), 0
-        ) / results.length
+        sum + (r.status === 'failed' ? 1 : r.status === 'challenged' ? 0.5 : 0), 0
+      ) / results.length
       : 0;
 
     // Generate bear case themes if we have contradictions
@@ -370,6 +370,16 @@ export class StressTestWorkflow {
         }
       } catch (error) {
         console.error(`[StressTest] Search error for "${query}":`, error);
+
+        // Propagate rate limit errors to trigger BullMQ retry
+        if (error instanceof Error && (
+          error.message.includes('Rate Limit') ||
+          error.message.includes('Quota Exceeded') ||
+          error.message.includes('429') ||
+          error.message.includes('432')
+        )) {
+          throw error;
+        }
       }
     }
 
