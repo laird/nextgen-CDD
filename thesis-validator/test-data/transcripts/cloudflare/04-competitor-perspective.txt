@@ -1,0 +1,25 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+
+Expert Call Transcript - Competitive Landscape
+Date: December 13, 2024
+Interviewee: Test Davis, Former Akamai Executive
+
+Interviewer: How do you view Cloudflare's competitive threat to traditional CDN players?
+
+Expert: They've completely disrupted the pricing model. When Cloudflare launched with unlimited bandwidth on their Pro plan, it forced everyone to rethink pricing. Akamai and Fastly have had to adapt. The traditional per-gigabyte pricing model is dying.
+
+Interviewer: Where does Cloudflare have advantages?
+
+Expert: Speed of innovation is their biggest advantage. They ship features at a pace that legacy players can't match. Their developer experience is also superior - the API-first approach resonates with modern engineering teams. And their network architecture is more modern - anycast everywhere versus the hub-and-spoke model of older CDNs.
+
+Interviewer: Where are they weaker?
+
+Expert: Enterprise support and customization. Large media companies need specialized video delivery optimization that Cloudflare doesn't really offer. Their streaming product is nascent compared to Akamai's. Also, for truly mission-critical applications, some enterprises still prefer the proven reliability of Akamai, even at higher cost.
+
+Interviewer: Do you think they can win in enterprise?
+
+Expert: They're making progress but it's a long game. Enterprise procurement cycles are 12-18 months. They need reference customers and case studies. The Zero Trust push is smart because it opens doors that CDN alone wouldn't. But they're competing against Zscaler which has a 5-year head start in that specific market.
+
+Interviewer: What's your outlook for the CDN market overall?
+
+Expert: The market is consolidating around three tiers: hyperscalers offering commodity CDN, Cloudflare offering the integrated platform, and specialists like Fastly for programmable edge. Akamai is stuck in the middle trying to evolve. Cloudflare's positioning is strong but they need to execute on profitability.

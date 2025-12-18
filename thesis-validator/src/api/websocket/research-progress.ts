@@ -196,22 +196,59 @@ export async function registerResearchProgressWebSocket(fastify: FastifyInstance
       const url = new URL(request.url, `http://${request.headers.host}`);
       const token = url.searchParams.get('token');
 
-      if (!token) {
-        socket.close(4001, 'Authentication required');
-        return;
-      }
+      console.log(`[ResearchProgress] WS Connection attempt: DISABLE_AUTH=${process.env['DISABLE_AUTH']}, Token=${!!token}`);
 
-      // Verify token
       let user;
-      try {
-        user = decodeToken(token);
-        if (!user) {
+
+      // Check if auth is disabled (for development)
+      if (process.env['DISABLE_AUTH'] === 'true') {
+        if (!token) {
+          // Use dev user
+          user = {
+            id: 'dev-user',
+            email: 'dev@localhost',
+            name: 'Development User',
+            role: 'admin',
+            permissions: ['*']
+          };
+        } else {
+          // Try to decode if token provided, but don't fail hard if invalid?
+          // actually, if auth is disabled, we can still accept a token if valid, or fallback.
+          // For simplicity: if auth disabled and no token/invalid token, use dev user.
+          try {
+            user = decodeToken(token);
+          } catch {
+            // ignore
+          }
+
+          if (!user) {
+            user = {
+              id: 'dev-user',
+              email: 'dev@localhost',
+              name: 'Development User',
+              role: 'admin',
+              permissions: ['*']
+            };
+          }
+        }
+      } else {
+        // Auth enabled - enforce token
+        if (!token) {
+          socket.close(4001, 'Authentication required');
+          return;
+        }
+
+        // Verify token
+        try {
+          user = decodeToken(token);
+          if (!user) {
+            socket.close(4003, 'Invalid token');
+            return;
+          }
+        } catch (_error) {
           socket.close(4003, 'Invalid token');
           return;
         }
-      } catch (_error) {
-        socket.close(4003, 'Invalid token');
-        return;
       }
 
       // Create connection record

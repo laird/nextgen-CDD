@@ -8,7 +8,7 @@ import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import type { ResearchJobData } from '../services/job-queue.js';
 import type { ProgressEvent } from '../models/index.js';
-import { ConductorAgent, createAgentSwarm } from '../agents/index.js';
+import { createAgentSwarm } from '../agents/index.js';
 import { DealMemory } from '../memory/deal-memory.js';
 import { getPool } from '../db/index.js';
 

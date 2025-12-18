@@ -8,8 +8,8 @@
  * - Build hypothesis trees with confidence scoring
  */
 
-import { BaseAgent, createTool } from './base-agent.js';
-import type { AgentResult, AgentTool } from './base-agent.js';
+import { BaseAgent } from './base-agent.js';
+import type { AgentResult } from './base-agent.js';
 import type {
   HypothesisNode,
   HypothesisDecomposition,
@@ -227,7 +227,7 @@ Output structured JSON with clear hierarchy and relationships.`,
    * Decompose thesis into structured components
    */
   private async decomposeThesis(input: HypothesisBuilderInput): Promise<HypothesisDecomposition> {
-    const tools = this.getTools();
+
 
     const prompt = `Decompose the following investment thesis into testable hypotheses:
 
@@ -499,87 +499,7 @@ Output as JSON array:
     return overlap / Math.max(words1.size, words2.size, 1);
   }
 
-  /**
-   * Get builder tools for thesis decomposition
-   */
-  private getTools(): AgentTool[] {
-    return [
-      /*
-      createTool(
-        'search_similar_theses',
-        'Search for similar historical theses in institutional memory',
-        {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-            sector: { type: 'string', description: 'Sector filter' },
-          },
-          required: ['query'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) {
-            return { results: [] };
-          }
-          const embedding = await this.embed(input['query'] as string);
-          const results = await this.context.institutionalMemory.searchPatterns(embedding, {
-            top_k: 5,
-            sector: input['sector'] as any,
-          });
-          return { results };
-        }
-      ),
-      */
 
-      createTool(
-        'get_existing_hypotheses',
-        'Get existing hypotheses for the engagement',
-        {
-          type: 'object',
-          properties: {
-            _ignore: { type: 'string', description: 'Ignore' }
-          }
-        },
-        async () => {
-          if (!this.context) {
-            return { hypotheses: [] };
-          }
-          const hypotheses = await this.context.dealMemory.getAllHypotheses();
-          return { hypotheses };
-        }
-      ),
-
-      /*
-      createTool(
-        'check_assumption_validity',
-        'Check if an assumption has been tested in past deals',
-        {
-          type: 'object',
-          properties: {
-            assumption: { type: 'string', description: 'The assumption to check' },
-          },
-          required: ['assumption'],
-        },
-        async (input) => {
-          if (!this.context?.institutionalMemory) {
-            return { found: false };
-          }
-          const embedding = await this.embed(input['assumption'] as string);
-          const results = await this.context.institutionalMemory.retrieveReflexions(embedding, {
-            top_k: 3,
-            min_score: 0.7,
-          });
-          return {
-            found: results.length > 0,
-            similar_experiences: results.map((r) => ({
-              content: r.content,
-              outcome: r.metadata['was_successful'],
-            })),
-          };
-        }
-      ),
-      */
-    ];
-  }
 
   /**
    * Refine hypotheses based on new evidence

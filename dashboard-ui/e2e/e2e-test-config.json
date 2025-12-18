@@ -1,0 +1,15 @@
+{
+  "company": "Cloudflare",
+  "sector": "Technology",
+  "investmentThesis": "## Cloudflare Investment Thesis\n\n**1. Dominant Market Position in Critical Infrastructure**\n- Leading global edge computing and web security platform with 20%+ market share in CDN/security\n- Mission-critical services create high switching costs and sticky customer relationships\n- Network effects strengthen with scale as broader coverage improves service quality\n\n**2. Secular Growth Tailwinds**\n- Rising cybersecurity threats drive increasing demand for edge security solutions\n- Cloud migration and digital transformation accelerating enterprise adoption\n- Expanding total addressable market from ~$100B today to $200B+ by 2026\n\n**3. Strong Competitive Moats**\n- Massive global network infrastructure (275+ cities) extremely difficult to replicate\n- Superior performance and cost efficiency vs. legacy providers and hyperscalers\n- Developer-first approach and ease of integration create strong customer loyalty\n\n**4. Scalable Business Model with Expanding Margins**\n- High incremental margins as traffic scales across existing infrastructure\n- Land-and-expand strategy driving 120%+ net revenue retention\n- Growing mix of higher-margin Zero Trust and developer platform services\n\n**5. Key Risk: Intense Competition**\n- Well-funded competitors (AWS, Microsoft, Google) with deep pockets\n- Potential margin pressure from pricing competition\n- Execution risk in rapidly evolving cybersecurity landscape",
+  "transcriptDir": "/home/laird/src/nextgen-CDD/thesis-validator/test-data/transcripts/e2e-cloudflare",
+  "transcripts": [
+    {"filename": "01-industry-analyst.txt", "role": "Industry Analyst", "sentiment": "balanced"},
+    {"filename": "02-enterprise-customer.txt", "role": "Enterprise Customer", "sentiment": "positive"},
+    {"filename": "03-financial-analyst.txt", "role": "Financial Analyst", "sentiment": "analytical"},
+    {"filename": "04-competitor-executive.txt", "role": "Competitor Executive", "sentiment": "critical"},
+    {"filename": "05-developer-advocate.txt", "role": "Developer Advocate", "sentiment": "enthusiastic"},
+    {"filename": "06-skeptical-investor.txt", "role": "Skeptical Investor", "sentiment": "skeptical"}
+  ],
+  "generatedAt": "2025-12-17T18:22:18.929Z"
+}

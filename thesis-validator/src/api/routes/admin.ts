@@ -1,7 +1,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getResearchQueue } from '../../services/job-queue.js';
-import { requireRole } from '../middleware/auth.js';
+
 
 /**
  * Register admin routes

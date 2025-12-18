@@ -1,0 +1,281 @@
+
+> thesis-validator@1.0.0 test
+> vitest run tests/e2e-slice1-slice2.test.ts
+
+
+ RUN  v2.1.9 /home/laird/src/nextgen-CDD/thesis-validator
+
+stdout | tests/e2e-slice1-slice2.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+
+stdout | tests/e2e-slice1-slice2.test.ts
+[ResearchProgress] Redis connected successfully
+
+ ❯ tests/e2e-slice1-slice2.test.ts (22 tests | 13 failed) 92ms
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create evidence for the engagement 4ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create additional evidence with different sentiment 1ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should retrieve all evidence for engagement 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by sentiment 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by source type 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by minimum credibility 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should get evidence statistics 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should update evidence sentiment and credibility 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should link evidence to hypothesis 1ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by hypothesis 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should delete evidence 1ms
+     → Cannot read properties of undefined (reading 'id')
+   × Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should show updated hypothesis coverage in evidence stats after linking 0ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should properly delete hypothesis with linked evidence 3ms
+     → Cannot read properties of undefined (reading 'id')
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create evidence for the engagement
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:281:35
+    279|       });
+    280| 
+    281|       expect(response.statusCode).toBe(201);
+       |                                   ^
+    282|       const body = JSON.parse(response.payload);
+    283|       expect(body.evidence).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create additional evidence with different sentiment
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:326:37
+    324|         });
+    325| 
+    326|         expect(response.statusCode).toBe(201);
+       |                                     ^
+    327|       }
+    328|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should retrieve all evidence for engagement
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:336:35
+    334|       });
+    335| 
+    336|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    337|       const body = JSON.parse(response.payload);
+    338|       expect(body.evidence).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by sentiment
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:349:35
+    347|       });
+    348| 
+    349|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    350|       const body = JSON.parse(response.payload);
+    351|       expect(body.evidence.every((e: any) => e.sentiment === 'supporti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by source type
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:361:35
+    359|       });
+    360| 
+    361|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    362|       const body = JSON.parse(response.payload);
+    363|       expect(body.evidence.every((e: any) => e.sourceType === 'documen…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by minimum credibility
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:372:35
+    370|       });
+    371| 
+    372|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    373|       const body = JSON.parse(response.payload);
+    374|       expect(body.evidence.every((e: any) => e.credibility >= 0.8)).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should get evidence statistics
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:383:35
+    381|       });
+    382| 
+    383|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    384|       const body = JSON.parse(response.payload);
+    385|       expect(body.stats).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should update evidence sentiment and credibility
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:405:35
+    403|       });
+    404| 
+    405|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    406|       const body = JSON.parse(response.payload);
+    407|       expect(body.evidence.sentiment).toBe('neutral');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should link evidence to hypothesis
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:422:35
+    420|       });
+    421| 
+    422|       expect(response.statusCode).toBe(201);
+       |                                   ^
+    423|       const body = JSON.parse(response.payload);
+    424|       expect(body.message).toBe('Evidence linked to hypothesis');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by hypothesis
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:433:35
+    431|       });
+    432| 
+    433|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    434|       const body = JSON.parse(response.payload);
+    435|       expect(body.evidence.length).toBeGreaterThanOrEqual(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should delete evidence
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ tests/e2e-slice1-slice2.test.ts:469:59
+    467|       const deleteResponse = await server.inject({
+    468|         method: 'DELETE',
+    469|         url: `/api/v1/${engagementId}/evidence/${evidence.id}`,
+       |                                                           ^
+    470|       });
+    471| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should show updated hypothesis coverage in evidence stats after linking
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:497:35
+    495|       });
+    496| 
+    497|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    498|       const body = JSON.parse(response.payload);
+    499|       expect(body.stats.hypothesisCoverage).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should properly delete hypothesis with linked evidence
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ tests/e2e-slice1-slice2.test.ts:542:62
+    540|       await server.inject({
+    541|         method: 'POST',
+    542|         url: `/api/v1/${engagementId}/evidence/${newEvidence.id}/hypot…
+       |                                                              ^
+    543|         headers: { 'Content-Type': 'application/json' },
+    544|         payload: {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 9 passed (22)
+   Start at  14:58:34
+   Duration  1.66s (transform 321ms, setup 18ms, collect 1.40s, tests 92ms, environment 0ms, prepare 43ms)
+

@@ -22,7 +22,7 @@ import {
   getEngagementUsers,
   type AuthenticatedRequest,
 } from '../middleware/index.js';
-import { createDealMemory } from '../../memory/index.js';
+import { createDealMemory, DealMemory } from '../../memory/index.js';
 import { EngagementRepository, type EngagementDTO } from '../../repositories/index.js';
 
 /**
@@ -449,20 +449,30 @@ export async function registerEngagementRoutes(fastify: FastifyInstance): Promis
         return;
       }
 
-      // Soft delete by updating status
+      // Update in memory first (soft delete behavior for the store)
       engagement.status = 'archived';
       engagement.updated_at = Date.now();
       engagementStore.set(engagementId, engagement);
 
-      // Persist to PostgreSQL
+      // Persist to PostgreSQL (Soft Delete)
       try {
         await engagementRepo.update(engagementId, { status: 'archived' });
       } catch (dbError) {
         fastify.log.warn({ err: dbError }, 'Failed to archive engagement in PostgreSQL');
       }
 
+      // Cleanup Deal Memory (Vector Store, Graph, etc.)
+      try {
+        const dealMemory = new DealMemory(engagementId);
+        await dealMemory.destroy();
+        fastify.log.info({ engagementId }, 'Cleaned up deal memory');
+      } catch (memError) {
+        fastify.log.error({ err: memError }, 'Failed to cleanup deal memory');
+        // We don't fail the request here as the primary action (archiving) succeeded
+      }
+
       reply.send({
-        message: 'Engagement archived successfully',
+        message: 'Engagement archived and memory cleaned up successfully',
       });
     }
   );

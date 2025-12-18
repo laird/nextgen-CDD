@@ -2,8 +2,8 @@
  * Engagement detail view with research workflow
  */
 import { useState } from 'react';
-import { Building2, Calendar, User, Tag } from 'lucide-react';
-import { useEngagement } from '../../hooks/useEngagements';
+import { Building2, Calendar, User, Tag, Trash2, Archive } from 'lucide-react';
+import { useEngagement, useDeleteEngagement, useUpdateEngagement } from '../../hooks/useEngagements';
 import { ThesisSubmitForm } from '../research/ThesisSubmitForm';
 import { ResearchProgress } from '../research/ResearchProgress';
 import { ResearchResults } from '../research/ResearchResults';
@@ -13,6 +13,7 @@ import { ContradictionList, ContradictionDetailPanel, ContradictionStats } from 
 import { StressTestRunner, StressTestResults, StressTestHistory } from '../stress-test';
 import { MetricsGauges, MetricsHistory } from '../metrics';
 import { ExpertCallPanel } from '../expert-call';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import { useHypothesisTree, useUpdateHypothesis } from '../../hooks/useHypotheses';
 import { useEvidenceStats, useUpdateEvidence } from '../../hooks/useEvidence';
 import {
@@ -33,13 +34,16 @@ import type { HypothesisNode, Evidence, Contradiction, StressTest } from '../../
 
 interface EngagementDetailProps {
   engagementId: string;
+  onNavigate?: (view: string) => void;
 }
 
 type WorkflowStep = 'submit' | 'progress' | 'results';
 type TabType = 'research' | 'hypotheses' | 'evidence' | 'contradictions' | 'stress-tests' | 'expert-calls' | 'metrics';
 
-export function EngagementDetail({ engagementId }: EngagementDetailProps) {
+export function EngagementDetail({ engagementId, onNavigate }: EngagementDetailProps) {
   const { data: engagement, isLoading, error } = useEngagement(engagementId);
+  const { mutate: deleteEngagement, isPending: isDeleting } = useDeleteEngagement();
+  const { mutate: updateEngagement, isPending: isUpdating } = useUpdateEngagement();
   const [activeTab, setActiveTab] = useState<TabType>('research');
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('submit');
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -95,6 +99,44 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
         data: { status: status as any },
       });
     }
+  }
+
+
+  const [confirmationState, setConfirmationState] = useState<{
+    type: 'delete' | 'archive' | null;
+    show: boolean;
+  }>({ type: null, show: false });
+
+  const confirmAction = () => {
+    if (confirmationState.type === 'delete') {
+      deleteEngagement(engagementId, {
+        onSuccess: () => {
+          if (onNavigate) {
+            onNavigate('dashboard');
+          }
+        },
+      });
+    } else if (confirmationState.type === 'archive') {
+      updateEngagement({
+        id: engagementId,
+        data: { status: 'archived' }
+      }, {
+        onSuccess: () => {
+          if (onNavigate) {
+            onNavigate('dashboard');
+          }
+        },
+      });
+    }
+    setConfirmationState({ type: null, show: false });
+  };
+
+  const handleArchive = () => {
+    setConfirmationState({ type: 'archive', show: true });
+  };
+
+  const handleDelete = () => {
+    setConfirmationState({ type: 'delete', show: true });
   };
 
   if (isLoading) {
@@ -158,23 +200,38 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
               </p>
             )}
           </div>
-          <div className="ml-4">
+          <div className="ml-4 flex items-center gap-3">
             <span
               className={`
                 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-                ${
-                  engagement.status === 'active'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    : engagement.status === 'completed'
+                ${engagement.status === 'active'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                  : engagement.status === 'completed'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     : engagement.status === 'in_review'
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    : 'bg-surface-100 text-surface-800 dark:bg-surface-800 dark:text-surface-400'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-surface-100 text-surface-800 dark:bg-surface-800 dark:text-surface-400'
                 }
               `}
             >
               {engagement.status}
             </span>
+            <button
+              onClick={handleArchive}
+              disabled={isUpdating || isDeleting}
+              className="p-2 text-surface-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+              title="Archive Engagement"
+            >
+              <Archive className="h-5 w-5" />
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting || isUpdating}
+              className="p-2 text-surface-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Delete Engagement"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -186,10 +243,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('research')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'research'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'research'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -199,10 +255,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('hypotheses')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'hypotheses'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'hypotheses'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -212,10 +267,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('evidence')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'evidence'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'evidence'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -225,10 +279,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('contradictions')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'contradictions'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'contradictions'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -238,10 +291,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('stress-tests')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'stress-tests'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'stress-tests'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -251,10 +303,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('expert-calls')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'expert-calls'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'expert-calls'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -264,10 +315,9 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             onClick={() => setActiveTab('metrics')}
             className={`
               px-4 py-3 text-sm font-medium border-b-2 transition-colors
-              ${
-                activeTab === 'metrics'
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              ${activeTab === 'metrics'
+                ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
               }
             `}
           >
@@ -280,110 +330,104 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
       {activeTab === 'research' && (
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">
-          {/* Step Indicator */}
-          <div className="mb-6 flex items-center justify-center gap-4">
-            <div
-              className={`flex items-center gap-2 ${
-                currentStep === 'submit' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
-              }`}
-            >
+            {/* Step Indicator */}
+            <div className="mb-6 flex items-center justify-center gap-4">
               <div
-                className={`
+                className={`flex items-center gap-2 ${currentStep === 'submit' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
+                  }`}
+              >
+                <div
+                  className={`
                   flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm
-                  ${
-                    currentStep === 'submit'
+                  ${currentStep === 'submit'
                       ? 'bg-primary-100 dark:bg-primary-900/30'
                       : 'bg-surface-100 dark:bg-surface-800'
-                  }
+                    }
                 `}
-              >
-                1
-              </div>
-              <span className="text-sm font-medium">Submit Thesis</span>
-            </div>
-
-            <div className="h-px w-12 bg-surface-300 dark:bg-surface-600" />
-
-            <div
-              className={`flex items-center gap-2 ${
-                currentStep === 'progress' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
-              }`}
-            >
-              <div
-                className={`
-                  flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm
-                  ${
-                    currentStep === 'progress'
-                      ? 'bg-primary-100 dark:bg-primary-900/30'
-                      : 'bg-surface-100 dark:bg-surface-800'
-                  }
-                `}
-              >
-                2
-              </div>
-              <span className="text-sm font-medium">Research</span>
-            </div>
-
-            <div className="h-px w-12 bg-surface-300 dark:bg-surface-600" />
-
-            <div
-              className={`flex items-center gap-2 ${
-                currentStep === 'results' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
-              }`}
-            >
-              <div
-                className={`
-                  flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm
-                  ${
-                    currentStep === 'results'
-                      ? 'bg-primary-100 dark:bg-primary-900/30'
-                      : 'bg-surface-100 dark:bg-surface-800'
-                  }
-                `}
-              >
-                3
-              </div>
-              <span className="text-sm font-medium">Results</span>
-            </div>
-          </div>
-
-          {/* Step Content */}
-          {currentStep === 'submit' && (
-            <div className="bg-white dark:bg-surface-900 rounded-lg border border-surface-200 dark:border-surface-700 p-6">
-              <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">
-                Submit Investment Thesis
-              </h2>
-              <ThesisSubmitForm
-                engagementId={engagementId}
-                initialThesis={engagement.investment_thesis?.summary}
-                onSubmitSuccess={handleResearchStart}
-              />
-            </div>
-          )}
-
-          {currentStep === 'progress' && currentJobId && (
-            <div>
-              <ResearchProgress
-                engagementId={engagementId}
-                jobId={currentJobId}
-                onComplete={handleResearchComplete}
-              />
-            </div>
-          )}
-
-          {currentStep === 'results' && currentJobId && engagement.latest_research && (
-            <div>
-              <ResearchResults results={engagement.latest_research.results} />
-              <div className="mt-6 flex justify-center">
-                <button
-                  onClick={handleStartNew}
-                  className="px-6 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors"
                 >
-                  Start New Research
-                </button>
+                  1
+                </div>
+                <span className="text-sm font-medium">Submit Thesis</span>
+              </div>
+
+              <div className="h-px w-12 bg-surface-300 dark:bg-surface-600" />
+
+              <div
+                className={`flex items-center gap-2 ${currentStep === 'progress' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
+                  }`}
+              >
+                <div
+                  className={`
+                  flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm
+                  ${currentStep === 'progress'
+                      ? 'bg-primary-100 dark:bg-primary-900/30'
+                      : 'bg-surface-100 dark:bg-surface-800'
+                    }
+                `}
+                >
+                  2
+                </div>
+                <span className="text-sm font-medium">Research</span>
+              </div>
+
+              <div className="h-px w-12 bg-surface-300 dark:bg-surface-600" />
+
+              <div
+                className={`flex items-center gap-2 ${currentStep === 'results' ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400'
+                  }`}
+              >
+                <div
+                  className={`
+                  flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm
+                  ${currentStep === 'results'
+                      ? 'bg-primary-100 dark:bg-primary-900/30'
+                      : 'bg-surface-100 dark:bg-surface-800'
+                    }
+                `}
+                >
+                  3
+                </div>
+                <span className="text-sm font-medium">Results</span>
               </div>
             </div>
-          )}
+
+            {/* Step Content */}
+            {currentStep === 'submit' && (
+              <div className="bg-white dark:bg-surface-900 rounded-lg border border-surface-200 dark:border-surface-700 p-6">
+                <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">
+                  Submit Investment Thesis
+                </h2>
+                <ThesisSubmitForm
+                  engagementId={engagementId}
+                  initialThesis={engagement.investment_thesis?.summary}
+                  onSubmitSuccess={handleResearchStart}
+                />
+              </div>
+            )}
+
+            {currentStep === 'progress' && currentJobId && (
+              <div>
+                <ResearchProgress
+                  engagementId={engagementId}
+                  jobId={currentJobId}
+                  onComplete={handleResearchComplete}
+                />
+              </div>
+            )}
+
+            {currentStep === 'results' && currentJobId && engagement.latest_research && (
+              <div>
+                <ResearchResults results={engagement.latest_research.results} />
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={handleStartNew}
+                    className="px-6 py-2 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors"
+                  >
+                    Start New Research
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -611,6 +655,21 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
           </div>
         </div>
       )}
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmationState.show}
+        onClose={() => setConfirmationState({ ...confirmationState, show: false })}
+        onConfirm={confirmAction}
+        title={confirmationState.type === 'delete' ? 'Delete Engagement' : 'Archive Engagement'}
+        message={
+          confirmationState.type === 'delete'
+            ? 'Are you sure you want to delete this engagement? This action cannot be undone.'
+            : 'Are you sure you want to archive this engagement? It will be hidden from the main list.'
+        }
+        confirmLabel={confirmationState.type === 'delete' ? 'Delete' : 'Archive'}
+        isDestructive={confirmationState.type === 'delete'}
+        isLoading={isDeleting || isUpdating}
+      />
     </div>
   );
 }

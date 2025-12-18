@@ -9,7 +9,7 @@
  * - State management
  */
 
-import { generateText, stepCountIs, tool, type CoreMessage, type LanguageModel, type ToolSet } from 'ai';
+import { generateText, tool, type CoreMessage, type LanguageModel, type ToolSet } from 'ai';
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import { z } from 'zod';
 import type { DealMemory } from '../memory/deal-memory.js';
@@ -598,7 +598,7 @@ Output as JSON object with parameter names as keys:`;
       // Use tool() helper to ensure correct structure for AI SDK
       (toolsConfig as Record<string, unknown>)[agentTool.name] = tool({
         description: agentTool.description,
-        parameters: schema,
+        parameters: schema as z.ZodType<any>,
         execute: async (input: any) => {
           updateStatus('searching');
           const output = await handler(input);
@@ -609,7 +609,7 @@ Output as JSON object with parameter names as keys:`;
           });
           return output;
         },
-      });
+      } as any);
     }
 
     const hasTools = Object.keys(toolsConfig).length > 0;
@@ -619,9 +619,7 @@ Output as JSON object with parameter names as keys:`;
         model: this.model,
         system: this.config.systemPrompt,
         messages,
-        tools: hasTools ? toolsConfig : undefined,
-        stopWhen: stepCountIs(options?.maxIterations ?? 10),
-        maxOutputTokens: this.config.maxTokens,
+        ...(hasTools ? { tools: toolsConfig } : {}),
         temperature: this.config.temperature,
       });
 

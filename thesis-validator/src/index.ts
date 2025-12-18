@@ -67,13 +67,15 @@ async function main(): Promise<void> {
 
   // Start research worker (BullMQ)
   let researchWorker: ResearchWorker | null = null;
-  const redisHost = process.env['REDIS_HOST'];
-  if (redisHost) {
+  // Start research worker (BullMQ)
+  // Ensure we start the worker in local development (defaults to localhost)
+  const redisConfig = process.env['REDIS_HOST'] || process.env['REDIS_URL'] || 'localhost';
+  if (redisConfig) {
     console.log('Starting research worker...');
     researchWorker = new ResearchWorker(2); // concurrency of 2
     console.log('Research worker started');
   } else {
-    console.log('Skipping research worker (REDIS_HOST not configured)');
+    console.log('Skipping research worker (Redis not configured)');
   }
 
   // Graceful shutdown handlers

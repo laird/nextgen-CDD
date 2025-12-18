@@ -1,0 +1,25 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+
+Expert Call Transcript - Cloudflare Financial Analysis
+Date: December 12, 2024
+Interviewee: Test Chen, Senior Technology Analyst at Major Investment Bank
+
+Interviewer: What's your current thesis on Cloudflare as an investment?
+
+Analyst: We have a constructive view. The company is transitioning from a growth-at-all-costs model to demonstrating operating leverage. Revenue growth has been consistently above 30% year-over-year. The key metric we watch is large customer growth - customers paying over $100K annually - that cohort has been growing faster than overall revenue.
+
+Interviewer: How do you think about valuation?
+
+Analyst: It trades at a premium to peers - roughly 15-20x forward revenue. That's expensive, but arguably justified given the growth rate and the strategic positioning. They're one of the few companies that can credibly compete with hyperscalers on edge infrastructure. The question is whether they can maintain 25%+ growth as they scale past $2 billion in revenue.
+
+Interviewer: What are the bear case arguments?
+
+Analyst: First, path to profitability. They've guided to non-GAAP operating profit but GAAP profitability is still years away due to stock-based compensation. Second, TAM concerns - some argue the edge computing market isn't as big as Cloudflare claims. Third, hyperscaler competition - AWS, Microsoft, and Google all have edge offerings and can bundle aggressively.
+
+Interviewer: How does their go-to-market compare to competitors?
+
+Analyst: Their freemium model is brilliant for top-of-funnel. They claim over 4 million free customers. The challenge is enterprise sales - they've been investing heavily in sales capacity, but enterprise deals are lumpy and harder to predict. Zscaler has a more mature enterprise sales motion in Zero Trust specifically.
+
+Interviewer: What would change your thesis?
+
+Analyst: On the positive side, if they demonstrate consistent Rule of 40 performance - growth plus margins above 40% - that would justify the premium. On the negative side, if large customer growth decelerates below 25% or churn increases, we'd revisit. The next few quarters are critical for proving the model scales profitably.

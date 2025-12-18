@@ -1,0 +1,25 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+
+Expert Call Transcript - Cloudflare Enterprise Customer
+Date: December 11, 2024
+Interviewee: Test Baker, VP of Infrastructure at a Fortune 500 Retailer
+
+Interviewer: How long has your company been using Cloudflare?
+
+Customer: We started with their CDN about four years ago for our e-commerce sites. Since then we've expanded significantly - we now use their WAF, DDoS protection, Bot Management, and we're piloting Cloudflare One for Zero Trust access.
+
+Interviewer: What drove the expansion beyond CDN?
+
+Customer: Integration simplicity, honestly. Adding their WAF was just flipping a switch in the dashboard. When we evaluated standalone WAF vendors, the integration complexity was months of work. With Cloudflare, we had it running in production within a week.
+
+Interviewer: How would you rate their performance during high-traffic events?
+
+Customer: Black Friday and Cyber Monday are our biggest tests. Last year we handled 10x normal traffic with zero degradation. Their Argo Smart Routing actually improved our page load times by about 30% compared to going direct to origin. The automatic DDoS mitigation has stopped several attacks we didn't even know were happening until we saw the reports.
+
+Interviewer: Any pain points or areas for improvement?
+
+Customer: The enterprise support could be better. Response times are okay but not great compared to what we get from AWS. Also, their pricing model for Workers can get expensive at scale - we've had some surprise bills. And the dashboard, while improving, still feels like it was designed for developers rather than enterprise IT teams.
+
+Interviewer: Would you recommend Cloudflare to other enterprises?
+
+Customer: Absolutely, but with caveats. You need technical staff who understand networking. It's not a set-and-forget solution. But if you have the expertise, the value is exceptional. We estimate we're saving about $2 million annually compared to our previous multi-vendor setup, plus we've consolidated from five vendors down to one.

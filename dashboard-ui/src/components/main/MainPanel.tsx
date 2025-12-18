@@ -4,6 +4,7 @@
 import { Briefcase } from 'lucide-react';
 import { EngagementDetail } from '../engagement/EngagementDetail';
 import { EngagementForm, type EngagementFormData } from '../engagement/EngagementForm';
+import { ArchivedEngagements } from '../engagement/ArchivedEngagements';
 import { SkillsPage } from '../skills';
 import { useCreateEngagement } from '../../hooks/useEngagements';
 
@@ -16,18 +17,27 @@ export function MainPanel({ currentView, onViewChange }: MainPanelProps) {
   const { mutate: createEngagement, isPending } = useCreateEngagement();
 
   // Parse view to determine what to display
-  const isEngagementView = currentView.startsWith('engagement-');
+
   const isNewEngagement = currentView === 'new-engagement';
-  const engagementId = isEngagementView ? currentView.replace('engagement-', '') : null;
+
 
   const handleCreateEngagement = (data: EngagementFormData) => {
     createEngagement(data, {
       onSuccess: (response) => {
+        console.log('Engagement Created:', response);
         // Navigate to the newly created engagement
-        if (onViewChange && response.id) {
-          onViewChange(`engagement-${response.id}`);
+        if (onViewChange && response.engagement?.id) {
+          // Force a small delay or ensure state update priority if needed, but standard should work.
+          // Converting to string just to be safe if ID is number/string mismatch (though unlikely with TS)
+          const newId = String(response.engagement.id);
+          onViewChange(`engagement-${newId}`);
+        } else {
+          console.error('Failed to navigate to new engagement: ID missing', response);
         }
       },
+      onError: (error) => {
+        console.error('Failed to create engagement:', error);
+      }
     });
   };
 
@@ -63,13 +73,20 @@ export function MainPanel({ currentView, onViewChange }: MainPanelProps) {
   }
 
   // Engagement Detail View
-  if (isEngagementView && engagementId) {
-    return <EngagementDetail engagementId={engagementId} />;
+  if (currentView.startsWith('engagement-')) {
+    const engagementId = currentView.replace('engagement-', '');
+    // Using key ensures clean remount when switching engagements
+    return <EngagementDetail key={engagementId} engagementId={engagementId} onNavigate={onViewChange} />;
   }
 
   // Skills Library View
   if (currentView === 'skills') {
     return <SkillsPage />;
+  }
+
+  // Archived Engagements View
+  if (currentView === 'archived-engagements') {
+    return <ArchivedEngagements onNavigate={onViewChange} />;
   }
 
   // Dashboard/Default View

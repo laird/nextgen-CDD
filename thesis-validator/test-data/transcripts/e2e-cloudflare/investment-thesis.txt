@@ -1,0 +1,29 @@
+Investment Thesis for Cloudflare
+========================================
+
+## Cloudflare Investment Thesis
+
+**1. Dominant Market Position in Critical Infrastructure**
+- Leading global edge computing and web security platform with 20%+ market share in CDN/security
+- Mission-critical services create high switching costs and sticky customer relationships
+- Network effects strengthen with scale as broader coverage improves service quality
+
+**2. Secular Growth Tailwinds**
+- Rising cybersecurity threats drive increasing demand for edge security solutions
+- Cloud migration and digital transformation accelerating enterprise adoption
+- Expanding total addressable market from ~$100B today to $200B+ by 2026
+
+**3. Strong Competitive Moats**
+- Massive global network infrastructure (275+ cities) extremely difficult to replicate
+- Superior performance and cost efficiency vs. legacy providers and hyperscalers
+- Developer-first approach and ease of integration create strong customer loyalty
+
+**4. Scalable Business Model with Expanding Margins**
+- High incremental margins as traffic scales across existing infrastructure
+- Land-and-expand strategy driving 120%+ net revenue retention
+- Growing mix of higher-margin Zero Trust and developer platform services
+
+**5. Key Risk: Intense Competition**
+- Well-funded competitors (AWS, Microsoft, Google) with deep pockets
+- Potential margin pressure from pricing competition
+- Execution risk in rapidly evolving cybersecurity landscape

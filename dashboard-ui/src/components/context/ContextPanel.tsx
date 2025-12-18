@@ -18,7 +18,13 @@ import {
   GitBranch,
   Target,
   Shield,
+  Briefcase,
 } from 'lucide-react';
+import { useEngagement } from '../../hooks/useEngagements';
+import { useHypothesisTree } from '../../hooks/useHypotheses';
+import { useEvidence } from '../../hooks/useEvidence';
+
+import type { HypothesisNode } from '../../types/api';
 
 type TabId = 'overview' | 'hypotheses' | 'evidence' | 'sources';
 
@@ -28,88 +34,11 @@ interface Tab {
   icon: React.ElementType;
 }
 
-interface Hypothesis {
-  id: string;
-  title: string;
-  status: 'untested' | 'supported' | 'challenged' | 'refuted';
-  confidence: number;
-  children?: Hypothesis[];
-}
-
-interface Evidence {
-  id: string;
-  title: string;
-  source: string;
-  sentiment: 'supporting' | 'contradicting' | 'neutral';
-  credibility: number;
-  date: string;
-}
-
 const tabs: Tab[] = [
   { id: 'overview', label: 'Overview', icon: Building2 },
   { id: 'hypotheses', label: 'Hypotheses', icon: GitBranch },
   { id: 'evidence', label: 'Evidence', icon: FileText },
   { id: 'sources', label: 'Sources', icon: Link },
-];
-
-const mockHypotheses: Hypothesis[] = [
-  {
-    id: '1',
-    title: 'Market will grow at 15% CAGR',
-    status: 'supported',
-    confidence: 78,
-    children: [
-      { id: '1.1', title: 'TAM expansion driven by digital transformation', status: 'supported', confidence: 85 },
-      { id: '1.2', title: 'New market entrants will not erode margins', status: 'challenged', confidence: 45 },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Customer retention will remain above 90%',
-    status: 'untested',
-    confidence: 0,
-  },
-  {
-    id: '3',
-    title: 'Technology moat is defensible',
-    status: 'challenged',
-    confidence: 52,
-  },
-];
-
-const mockEvidence: Evidence[] = [
-  {
-    id: '1',
-    title: 'Market size report indicates strong growth trajectory',
-    source: 'Gartner Research',
-    sentiment: 'supporting',
-    credibility: 92,
-    date: '2024-03-15',
-  },
-  {
-    id: '2',
-    title: 'New competitor raised $50M Series B',
-    source: 'TechCrunch',
-    sentiment: 'contradicting',
-    credibility: 75,
-    date: '2024-03-10',
-  },
-  {
-    id: '3',
-    title: 'Patent analysis shows strong IP portfolio',
-    source: 'Internal Analysis',
-    sentiment: 'supporting',
-    credibility: 88,
-    date: '2024-03-08',
-  },
-  {
-    id: '4',
-    title: 'Customer survey data pending analysis',
-    source: 'Company Data',
-    sentiment: 'neutral',
-    credibility: 80,
-    date: '2024-03-05',
-  },
 ];
 
 const statusConfig = {
@@ -125,9 +54,51 @@ const sentimentConfig = {
   neutral: { icon: Minus, color: 'text-surface-400', label: 'Neutral' },
 };
 
-export function ContextPanel() {
+interface ContextPanelProps {
+  engagementId?: string;
+}
+
+export function ContextPanel({ engagementId }: ContextPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [expandedHypotheses, setExpandedHypotheses] = useState<Set<string>>(new Set(['1']));
+  const [expandedHypotheses, setExpandedHypotheses] = useState<Set<string>>(new Set());
+
+  // Data fetching
+  const { data: engagement, isLoading: loadingEngagement } = useEngagement(engagementId || null);
+  const { data: hypothesisTree } = useHypothesisTree(engagementId || null);
+  const { data: evidenceData } = useEvidence(engagementId || null);
+
+
+  if (!engagementId) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+        <div className="bg-surface-100 dark:bg-surface-800 p-4 rounded-full mb-4">
+          <Briefcase className="h-8 w-8 text-surface-400" />
+        </div>
+        <h3 className="text-lg font-medium text-surface-900 dark:text-white mb-2">
+          No Engagement Selected
+        </h3>
+        <p className="text-sm text-surface-500 dark:text-surface-400">
+          Select an engagement to view detailed context and insights.
+        </p>
+      </div>
+    );
+  }
+
+  if (loadingEngagement) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-surface-500">Loading context...</div>
+      </div>
+    );
+  }
+
+  if (!engagement) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-surface-500">Engagement not found</div>
+      </div>
+    );
+  }
 
   const toggleHypothesis = (id: string) => {
     setExpandedHypotheses((prev) => {
@@ -141,15 +112,16 @@ export function ContextPanel() {
     });
   };
 
-  const renderHypothesis = (hypothesis: Hypothesis, depth = 0) => {
-    const StatusIcon = statusConfig[hypothesis.status].icon;
-    const hasChildren = hypothesis.children && hypothesis.children.length > 0;
-    const isExpanded = expandedHypotheses.has(hypothesis.id);
+  const renderHypothesisNode = (node: HypothesisNode, children: HypothesisNode[], depth = 0) => {
+    const StatusIcon = statusConfig[node.status || 'untested'].icon;
+    const nodeChildren = children.filter(c => c.parentId === node.id);
+    const hasChildren = nodeChildren.length > 0;
+    const isExpanded = expandedHypotheses.has(node.id);
 
     return (
-      <div key={hypothesis.id} className={depth > 0 ? 'ml-4 border-l border-surface-200 dark:border-surface-700 pl-3' : ''}>
+      <div key={node.id} className={depth > 0 ? 'ml-4 border-l border-surface-200 dark:border-surface-700 pl-3' : ''}>
         <button
-          onClick={() => hasChildren && toggleHypothesis(hypothesis.id)}
+          onClick={() => hasChildren && toggleHypothesis(node.id)}
           className="flex w-full items-start gap-2 rounded-lg p-2 hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors text-left"
         >
           {hasChildren && (
@@ -159,29 +131,28 @@ export function ContextPanel() {
           )}
           {!hasChildren && <div className="w-4" />}
 
-          <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${statusConfig[hypothesis.status].bg}`}>
-            <StatusIcon className={`h-3 w-3 ${statusConfig[hypothesis.status].color}`} />
+          <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${statusConfig[node.status || 'untested'].bg}`}>
+            <StatusIcon className={`h-3 w-3 ${statusConfig[node.status || 'untested'].color}`} />
           </div>
 
           <div className="flex-1 min-w-0">
             <p className="text-sm text-surface-700 dark:text-surface-200 line-clamp-2">
-              {hypothesis.title}
+              {node.content}
             </p>
-            {hypothesis.confidence > 0 && (
+            {node.confidence > 0 && (
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex-1 h-1.5 bg-surface-200 dark:bg-surface-600 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full ${
-                      hypothesis.confidence >= 70
-                        ? 'bg-green-500'
-                        : hypothesis.confidence >= 40
+                    className={`h-full rounded-full ${node.confidence >= 0.7
+                      ? 'bg-green-500'
+                      : node.confidence >= 0.4
                         ? 'bg-yellow-500'
                         : 'bg-red-500'
-                    }`}
-                    style={{ width: `${hypothesis.confidence}%` }}
+                      }`}
+                    style={{ width: `${node.confidence * 100}%` }}
                   />
                 </div>
-                <span className="text-xs text-surface-500">{hypothesis.confidence}%</span>
+                <span className="text-xs text-surface-500">{Math.round(node.confidence * 100)}%</span>
               </div>
             )}
           </div>
@@ -189,19 +160,23 @@ export function ContextPanel() {
 
         {hasChildren && isExpanded && (
           <div className="mt-1">
-            {hypothesis.children!.map((child) => renderHypothesis(child, depth + 1))}
+            {nodeChildren.map((child) => renderHypothesisNode(child, children, depth + 1))}
           </div>
         )}
       </div>
     );
   };
 
+  const topLevelHypotheses = hypothesisTree?.hypotheses.filter(h => !h.parentId) || [];
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="border-b border-surface-200 dark:border-surface-700 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-surface-900 dark:text-white">TechCorp Acquisition</h2>
+          <h2 className="font-semibold text-surface-900 dark:text-white truncate" title={engagement.name}>
+            {engagement.name}
+          </h2>
           <div className="flex gap-1">
             <button className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors">
               <Share2 className="h-4 w-4" />
@@ -221,10 +196,9 @@ export function ContextPanel() {
               className={`
                 flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium
                 transition-colors
-                ${
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-surface-800 text-surface-900 dark:text-white shadow-sm'
-                    : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+                ${activeTab === tab.id
+                  ? 'bg-white dark:bg-surface-800 text-surface-900 dark:text-white shadow-sm'
+                  : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
                 }
               `}
             >
@@ -246,75 +220,102 @@ export function ContextPanel() {
                   <Target className="h-4 w-4" />
                   <span className="text-xs">Deal Type</span>
                 </div>
-                <p className="text-sm font-medium text-surface-900 dark:text-white">Platform</p>
+                <p className="text-sm font-medium text-surface-900 dark:text-white capitalize">
+                  {engagement.deal_type ? engagement.deal_type.replace('_', ' ') : 'N/A'}
+                </p>
               </div>
               <div className="rounded-lg bg-surface-100 dark:bg-surface-700/50 p-3">
                 <div className="flex items-center gap-2 text-surface-500 mb-1">
                   <Calendar className="h-4 w-4" />
                   <span className="text-xs">Created</span>
                 </div>
-                <p className="text-sm font-medium text-surface-900 dark:text-white">Mar 1, 2024</p>
+                <p className="text-sm font-medium text-surface-900 dark:text-white">
+                  {new Date(engagement.created_at).toLocaleDateString()}
+                </p>
               </div>
             </div>
 
             {/* Key Value Drivers */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
-                Key Value Drivers
-              </h3>
-              <div className="space-y-2">
-                {['Recurring revenue model', 'Strong customer retention', 'Scalable technology platform'].map((driver, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    <span>{driver}</span>
-                  </div>
-                ))}
+            {engagement.investment_thesis && engagement.investment_thesis.key_value_drivers.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
+                  Key Value Drivers
+                </h3>
+                <div className="space-y-2">
+                  {engagement.investment_thesis.key_value_drivers.map((driver: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      <span>{driver}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Key Risks */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
-                Key Risks
-              </h3>
-              <div className="space-y-2">
-                {['Market concentration', 'Key person dependency', 'Regulatory changes'].map((risk, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
-                    <Shield className="h-4 w-4 text-yellow-500 shrink-0" />
-                    <span>{risk}</span>
-                  </div>
-                ))}
+            {engagement.investment_thesis && engagement.investment_thesis.key_risks.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
+                  Key Risks
+                </h3>
+                <div className="space-y-2">
+                  {engagement.investment_thesis.key_risks.map((risk: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-surface-700 dark:text-surface-300">
+                      <Shield className="h-4 w-4 text-yellow-500 shrink-0" />
+                      <span>{risk}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Research Progress */}
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
-                Research Progress
-              </h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-surface-600 dark:text-surface-400">Hypotheses tested</span>
-                  <span className="font-medium text-surface-900 dark:text-white">3/8</span>
-                </div>
-                <div className="h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
-                  <div className="h-full w-[37.5%] bg-primary-500 rounded-full" />
+            {/* Research Progress - Mocked for now until we have real progress data */}
+            {hypothesisTree && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">
+                  Research Progress
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-surface-600 dark:text-surface-400">Hypotheses tested</span>
+                    <span className="font-medium text-surface-900 dark:text-white">
+                      {hypothesisTree.hypotheses.filter(h => h.status !== 'untested').length}/{hypothesisTree.count}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary-500 rounded-full"
+                      style={{
+                        width: `${hypothesisTree.count > 0
+                          ? (hypothesisTree.hypotheses.filter(h => h.status !== 'untested').length / hypothesisTree.count) * 100
+                          : 0}%`
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {activeTab === 'hypotheses' && (
           <div className="space-y-1">
-            {mockHypotheses.map((h) => renderHypothesis(h))}
+            {hypothesisTree ? (
+              topLevelHypotheses.length > 0 ? (
+                topLevelHypotheses.map((h) => renderHypothesisNode(h, hypothesisTree.hypotheses))
+              ) : (
+                <div className="text-center text-sm text-surface-500 py-4">No hypotheses generated yet</div>
+              )
+            ) : (
+              <div className="text-center text-sm text-surface-500 py-4">Loading hypotheses...</div>
+            )}
           </div>
         )}
 
         {activeTab === 'evidence' && (
           <div className="space-y-3">
-            {mockEvidence.map((evidence) => {
-              const SentimentIcon = sentimentConfig[evidence.sentiment].icon;
+            {evidenceData?.evidence.map((evidence) => {
+              const SentimentIcon = sentimentConfig[evidence.sentiment || 'neutral'].icon;
               return (
                 <div
                   key={evidence.id}
@@ -322,41 +323,39 @@ export function ContextPanel() {
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <p className="text-sm font-medium text-surface-700 dark:text-surface-200 line-clamp-2">
-                      {evidence.title}
+                      {evidence.content.substring(0, 80)}...
                     </p>
-                    <SentimentIcon className={`h-4 w-4 shrink-0 ${sentimentConfig[evidence.sentiment].color}`} />
+                    <SentimentIcon className={`h-4 w-4 shrink-0 ${sentimentConfig[evidence.sentiment || 'neutral'].color}`} />
                   </div>
                   <div className="flex items-center justify-between text-xs text-surface-500">
                     <span className="flex items-center gap-1">
                       <BookOpen className="h-3 w-3" />
-                      {evidence.source}
+                      {evidence.sourceType}
                     </span>
-                    <span>{evidence.date}</span>
+                    <span>{evidence.createdAt ? new Date(evidence.createdAt).toLocaleDateString() : 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs text-surface-500">Credibility:</span>
                     <div className="flex-1 h-1 bg-surface-200 dark:bg-surface-600 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-primary-500 rounded-full"
-                        style={{ width: `${evidence.credibility}%` }}
+                        style={{ width: `${(evidence.credibility || 0) * 100}%` }}
                       />
                     </div>
-                    <span className="text-xs text-surface-600 dark:text-surface-400">{evidence.credibility}%</span>
+                    <span className="text-xs text-surface-600 dark:text-surface-400">{Math.round((evidence.credibility || 0) * 100)}%</span>
                   </div>
                 </div>
               );
-            })}
+            }) || <div className="text-center text-sm text-surface-500 py-4">No evidence found</div>}
           </div>
         )}
 
         {activeTab === 'sources' && (
           <div className="space-y-2">
             {[
-              { name: 'Gartner Research', type: 'Research Report', count: 5 },
-              { name: 'TechCrunch', type: 'News', count: 3 },
-              { name: 'Company Filings', type: 'Official Docs', count: 8 },
-              { name: 'Expert Interviews', type: 'Primary Research', count: 2 },
-              { name: 'Patent Database', type: 'IP Analysis', count: 12 },
+              { name: 'Research Reports', type: 'External', count: evidenceData?.evidence.filter(e => e.sourceType === 'document').length || 0 },
+              { name: 'Web News', type: 'News', count: evidenceData?.evidence.filter(e => e.sourceType === 'web').length || 0 },
+              { name: 'Expert Interviews', type: 'Primary Research', count: evidenceData?.evidence.filter(e => e.sourceType === 'expert').length || 0 },
             ].map((source, i) => (
               <div
                 key={i}

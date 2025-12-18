@@ -1,0 +1,25 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+
+Expert Call Transcript - Developer Ecosystem
+Date: December 14, 2024
+Interviewee: Test Evans, Developer Relations Lead at a Tech Company
+
+Interviewer: How do developers perceive Cloudflare Workers compared to AWS Lambda?
+
+Expert: Workers has carved out a real niche. The cold start times are essentially zero because it's V8 isolates, not containers. For latency-sensitive applications, that's huge. The global deployment by default is also a differentiator - you don't have to think about regions.
+
+Interviewer: What are the limitations?
+
+Expert: The execution model is constrained. Workers have CPU time limits and memory limits that are much tighter than Lambda. You can't run arbitrary workloads. It's optimized for lightweight request/response patterns. Also, the JavaScript/TypeScript requirement limits adoption - no Python or Go support natively.
+
+Interviewer: How does the broader Cloudflare developer platform compare?
+
+Expert: They've been aggressive about building out the ecosystem. Workers KV for key-value storage, Durable Objects for stateful applications, R2 for S3-compatible object storage, D1 for SQLite at the edge. It's becoming a complete serverless platform. R2 especially is disruptive - they charge zero egress fees which directly attacks AWS's profit center.
+
+Interviewer: What's the adoption like in the developer community?
+
+Expert: Growing fast among startups and indie developers. The free tier is generous. But enterprise adoption of Workers is still early. Most large companies are deeply invested in AWS or Azure. Switching serverless platforms is a significant undertaking. They're winning new workloads more than migrations.
+
+Interviewer: Do you see Cloudflare as a threat to AWS?
+
+Expert: At the edge, absolutely. They're better positioned for edge computing than AWS. But for general compute, AWS has massive advantages in breadth of services and enterprise sales. Cloudflare is smart to focus on their strengths rather than trying to be a full cloud provider.

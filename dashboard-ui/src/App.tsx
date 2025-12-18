@@ -60,7 +60,9 @@ function App() {
           />
         }
         rightPanel={
-          <ContextPanel />
+          <ContextPanel
+            engagementId={currentView.startsWith('engagement-') ? currentView.replace('engagement-', '') : undefined}
+          />
         }
       />
     </QueryClientProvider>

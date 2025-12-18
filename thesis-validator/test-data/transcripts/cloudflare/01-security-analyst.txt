@@ -1,0 +1,25 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+
+Expert Call Transcript - Cloudflare Investment Analysis
+Date: December 10, 2024
+Interviewee: Test Anderson, Security Industry Analyst
+
+Interviewer: Can you give us your perspective on Cloudflare's position in the security market?
+
+Analyst: Cloudflare has built something genuinely unique - they're not just a CDN company anymore. They've evolved into a comprehensive connectivity cloud. Their network spans over 300 cities globally, and they claim to handle about 20% of all web traffic. That scale gives them enormous data advantages for threat detection.
+
+Interviewer: How does their security offering compare to pure-play security vendors?
+
+Analyst: It's a different model. Traditional security vendors like CrowdStrike or Palo Alto focus on specific domains - endpoint or firewall. Cloudflare's approach is network-centric. Their Zero Trust platform, Cloudflare One, competes directly with Zscaler. The advantage is integration - if you're already using their CDN, adding security is seamless.
+
+Interviewer: What about their Workers platform and the developer angle?
+
+Analyst: That's their secret weapon for long-term stickiness. Workers lets developers run code at the edge - serverless computing distributed globally. Once developers build on Workers, switching costs become very high. They're essentially becoming infrastructure, like AWS but for the edge.
+
+Interviewer: What concerns do you have about the investment thesis?
+
+Analyst: Profitability timeline is the main question. They've been investing heavily in R&D and sales. Gross margins are strong at around 78%, but operating margins are still negative. They need to prove they can achieve profitability while maintaining growth. Also, competition from the hyperscalers - AWS CloudFront, Azure CDN - they have deep pockets.
+
+Interviewer: How sticky is their customer base?
+
+Analyst: Very sticky for enterprise customers. Net revenue retention has been consistently above 115%. Once you're running traffic through Cloudflare, migrating away is painful and risky. The free tier creates a massive funnel - millions of websites use Cloudflare for free, and some percentage convert to paid plans.

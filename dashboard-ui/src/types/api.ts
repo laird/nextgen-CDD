@@ -25,6 +25,14 @@ export interface Engagement {
   description?: string;
   deal_size?: number;
   lead_partner?: string;
+  investment_thesis?: {
+    summary: string;
+    key_value_drivers: string[];
+    key_risks: string[];
+    target_irr?: number;
+    hold_period_years?: number;
+    value_creation_levers?: string[];
+  };
 }
 
 export interface EngagementFilters {
@@ -134,8 +142,8 @@ export interface EvidenceItem {
 
 export interface ProgressEvent {
   type: 'status_update' | 'phase_start' | 'phase_complete' | 'hypothesis_generated' |
-        'evidence_found' | 'contradiction_detected' | 'round_complete' | 'job_complete' |
-        'completed' | 'error';
+  'evidence_found' | 'contradiction_detected' | 'round_complete' | 'job_complete' |
+  'completed' | 'error';
   jobId: string;
   timestamp: number | string;
   data: Record<string, unknown>;

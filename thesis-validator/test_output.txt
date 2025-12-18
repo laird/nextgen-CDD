@@ -1,0 +1,499 @@
+
+> thesis-validator@1.0.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /home/laird/src/nextgen-CDD/thesis-validator
+
+stdout | tests/services/llm-provider.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+
+stdout | tests/research-workflow.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+
+stdout | tests/e2e-slice4.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+
+stdout | tests/models.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: ⚙️  override existing env vars with { override: true }
+
+stdout | tests/e2e-slice1-slice2.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+stdout | tests/config.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+stdout | tests/e2e-slice3.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+
+stdout | tests/tools/credibility-scorer.test.ts
+[dotenv@17.2.3] injecting env (30) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+ ✓ tests/tools/credibility-scorer.test.ts (23 tests) 6ms
+stdout | tests/services/llm-provider.test.ts > LLMProvider > initialize() > should initialize anthropic provider
+[LLMProvider] Initialized Anthropic direct API client
+
+stdout | tests/services/llm-provider.test.ts > LLMProvider > initialize() > should not re-initialize if already initialized
+[LLMProvider] Initialized Anthropic direct API client
+
+stdout | tests/services/llm-provider.test.ts > LLMProvider > createMessage() > should create message with anthropic provider
+[LLMProvider] Initialized Anthropic direct API client
+
+stdout | tests/services/llm-provider.test.ts > LLMProvider > createMessage() > should auto-initialize if not ready
+[LLMProvider] Initialized Anthropic direct API client
+
+stdout | tests/services/llm-provider.test.ts > LLMProvider > getGoogleAuth() > should return null for anthropic provider
+[LLMProvider] Initialized Anthropic direct API client
+
+ ❯ tests/services/llm-provider.test.ts (16 tests | 2 failed) 15ms
+   × LLMProvider > initialize() > should initialize vertex-ai provider 5ms
+     → [vitest] No "AnthropicVertex" export is defined on the "@anthropic-ai/vertex-sdk" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+   × LLMProvider > getGoogleAuth() > should return auth service for vertex-ai provider 2ms
+     → [vitest] No "AnthropicVertex" export is defined on the "@anthropic-ai/vertex-sdk" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+ ❯ tests/config.test.ts (11 tests | 1 failed) 44ms
+   × Default Configuration > should have embedding configuration 5ms
+     → expected 'text-embedding-3-large' to be 'text-embedding-3-small' // Object.is equality
+ ❯ tests/models.test.ts (8 tests | 1 failed) 8ms
+   × Engagement Models > should create a valid engagement 3ms
+     → Cannot read properties of undefined (reading 'toLowerCase')
+stdout | tests/e2e-slice4.test.ts
+[ResearchProgress] Redis connected successfully
+
+stdout | tests/e2e-slice1-slice2.test.ts
+[ResearchProgress] Redis connected successfully
+
+stdout | tests/e2e-slice3.test.ts
+[ResearchProgress] Redis connected successfully
+
+stdout | tests/research-workflow.test.ts
+[ResearchProgress] Redis connected successfully
+
+ ❯ tests/research-workflow.test.ts (6 tests | 6 skipped) 10ms
+stderr | tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1: Hypothesis Management > should create a root hypothesis (thesis)
+[Warning] Failed to sync hypothesis 41d403b8-e6d1-4c9e-81f7-4f71d116faf8 to DealMemory: Error: RuvectorClient not initialized. Call initialize() first.
+    at RuvectorClient.ensureInitialized (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:181:13)
+    at RuvectorClient.createNamespace (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:204:10)
+    at DealMemory.initialize (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:104:25)
+    at Module.createDealMemory (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:716:16)
+    at Object.<anonymous> (/home/laird/src/nextgen-CDD/thesis-validator/src/api/routes/hypotheses.ts:108:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+stderr | tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1: Hypothesis Management > should create a sub-hypothesis linked to root
+[Warning] Failed to sync hypothesis 1c76f563-d7e5-4c0e-b449-17ace4fcef58 to DealMemory: Error: RuvectorClient not initialized. Call initialize() first.
+    at RuvectorClient.ensureInitialized (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:181:13)
+    at RuvectorClient.createNamespace (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:204:10)
+    at DealMemory.initialize (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:104:25)
+    at Module.createDealMemory (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:716:16)
+    at Object.<anonymous> (/home/laird/src/nextgen-CDD/thesis-validator/src/api/routes/hypotheses.ts:108:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+stderr | tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1: Hypothesis Management > should create an assumption hypothesis
+[Warning] Failed to sync hypothesis 937cad52-09ec-408e-b72a-2d9336cb6e5e to DealMemory: Error: RuvectorClient not initialized. Call initialize() first.
+    at RuvectorClient.ensureInitialized (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:181:13)
+    at RuvectorClient.createNamespace (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:204:10)
+    at DealMemory.initialize (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:104:25)
+    at Module.createDealMemory (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:716:16)
+    at Object.<anonymous> (/home/laird/src/nextgen-CDD/thesis-validator/src/api/routes/hypotheses.ts:108:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+stderr | tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1: Hypothesis Management > should create a causal edge between hypotheses
+[Warning] Failed to sync edge 1ed83e32-5cb3-4da2-b4f1-78162e2e572b to DealMemory: Error: RuvectorClient not initialized. Call initialize() first.
+    at RuvectorClient.ensureInitialized (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:181:13)
+    at RuvectorClient.createNamespace (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:204:10)
+    at DealMemory.initialize (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:104:25)
+    at Module.createDealMemory (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:716:16)
+    at Object.<anonymous> (/home/laird/src/nextgen-CDD/thesis-validator/src/api/routes/hypotheses.ts:259:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+stderr | tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should properly delete hypothesis with linked evidence
+[Warning] Failed to sync hypothesis 867e1e6c-8731-4a69-9a08-8cb1bdce6dab to DealMemory: Error: RuvectorClient not initialized. Call initialize() first.
+    at RuvectorClient.ensureInitialized (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:181:13)
+    at RuvectorClient.createNamespace (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/ruvector-client.ts:204:10)
+    at DealMemory.initialize (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:104:25)
+    at Module.createDealMemory (/home/laird/src/nextgen-CDD/thesis-validator/src/memory/deal-memory.ts:716:16)
+    at Object.<anonymous> (/home/laird/src/nextgen-CDD/thesis-validator/src/api/routes/hypotheses.ts:108:34)
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+ ✓ tests/e2e-slice3.test.ts (17 tests) 104ms
+stdout | tests/e2e-slice4.test.ts > Slice 4: Workflow Integration E2E Tests > Stress Test History > should get stress test by ID
+[LLMProvider] Initialized Anthropic direct API client
+
+ ❯ tests/e2e-slice1-slice2.test.ts (22 tests | 13 failed) 109ms
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create evidence for the engagement 3ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create additional evidence with different sentiment 1ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should retrieve all evidence for engagement 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by sentiment 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by source type 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by minimum credibility 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should get evidence statistics 0ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should update evidence sentiment and credibility 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should link evidence to hypothesis 1ms
+     → expected 404 to be 201 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by hypothesis 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should delete evidence 1ms
+     → Cannot read properties of undefined (reading 'id')
+   × Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should show updated hypothesis coverage in evidence stats after linking 1ms
+     → expected 404 to be 200 // Object.is equality
+   × Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should properly delete hypothesis with linked evidence 5ms
+     → Cannot read properties of undefined (reading 'id')
+ ✓ tests/e2e-slice4.test.ts (17 tests) 2642ms
+   ✓ Slice 4: Workflow Integration E2E Tests > Stress Test History > should delete a stress test 504ms
+   ✓ Slice 4: Workflow Integration E2E Tests > End-to-End Workflow Integration > should have recorded metrics from stress test workflow 2006ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/research-workflow.test.ts > Research Workflow Integration
+TypeError: initializeDatabase is not a function
+ ❯ tests/research-workflow.test.ts:27:11
+     25|   beforeAll(async () => {
+     26|     // Initialize database
+     27|     await initializeDatabase();
+       |           ^
+     28| 
+     29|     // Start server on test port
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/19]⎯
+
+ FAIL  tests/research-workflow.test.ts > Research Workflow Integration
+TypeError: Cannot read properties of undefined (reading 'close')
+ ❯ tests/research-workflow.test.ts:78:18
+     76| 
+     77|     // Stop worker
+     78|     await worker.close();
+       |                  ^
+     79| 
+     80|     // Stop server
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/19]⎯
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 17 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/config.test.ts > Default Configuration > should have embedding configuration
+AssertionError: expected 'text-embedding-3-large' to be 'text-embedding-3-small' // Object.is equality
+
+Expected: "text-embedding-3-small"
+Received: "text-embedding-3-large"
+
+ ❯ tests/config.test.ts:31:43
+     29|     expect(defaultConfig.embedding).toBeDefined();
+     30|     expect(defaultConfig.embedding.provider).toBe('openai');
+     31|     expect(defaultConfig.embedding.model).toBe('text-embedding-3-small…
+       |                                           ^
+     32|     expect(defaultConfig.embedding.dimensions).toBe(1536);
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create evidence for the engagement
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:281:35
+    279|       });
+    280| 
+    281|       expect(response.statusCode).toBe(201);
+       |                                   ^
+    282|       const body = JSON.parse(response.payload);
+    283|       expect(body.evidence).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should create additional evidence with different sentiment
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:326:37
+    324|         });
+    325| 
+    326|         expect(response.statusCode).toBe(201);
+       |                                     ^
+    327|       }
+    328|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should retrieve all evidence for engagement
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:336:35
+    334|       });
+    335| 
+    336|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    337|       const body = JSON.parse(response.payload);
+    338|       expect(body.evidence).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by sentiment
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:349:35
+    347|       });
+    348| 
+    349|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    350|       const body = JSON.parse(response.payload);
+    351|       expect(body.evidence.every((e: any) => e.sentiment === 'supporti…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by source type
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:361:35
+    359|       });
+    360| 
+    361|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    362|       const body = JSON.parse(response.payload);
+    363|       expect(body.evidence.every((e: any) => e.sourceType === 'documen…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by minimum credibility
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:372:35
+    370|       });
+    371| 
+    372|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    373|       const body = JSON.parse(response.payload);
+    374|       expect(body.evidence.every((e: any) => e.credibility >= 0.8)).to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should get evidence statistics
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:383:35
+    381|       });
+    382| 
+    383|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    384|       const body = JSON.parse(response.payload);
+    385|       expect(body.stats).toBeDefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should update evidence sentiment and credibility
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:405:35
+    403|       });
+    404| 
+    405|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    406|       const body = JSON.parse(response.payload);
+    407|       expect(body.evidence.sentiment).toBe('neutral');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should link evidence to hypothesis
+AssertionError: expected 404 to be 201 // Object.is equality
+
+- Expected
++ Received
+
+- 201
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:422:35
+    420|       });
+    421| 
+    422|       expect(response.statusCode).toBe(201);
+       |                                   ^
+    423|       const body = JSON.parse(response.payload);
+    424|       expect(body.message).toBe('Evidence linked to hypothesis');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should filter evidence by hypothesis
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:433:35
+    431|       });
+    432| 
+    433|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    434|       const body = JSON.parse(response.payload);
+    435|       expect(body.evidence.length).toBeGreaterThanOrEqual(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 2: Evidence Management > should delete evidence
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ tests/e2e-slice1-slice2.test.ts:469:59
+    467|       const deleteResponse = await server.inject({
+    468|         method: 'DELETE',
+    469|         url: `/api/v1/${engagementId}/evidence/${evidence.id}`,
+       |                                                           ^
+    470|       });
+    471| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should show updated hypothesis coverage in evidence stats after linking
+AssertionError: expected 404 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 404
+
+ ❯ tests/e2e-slice1-slice2.test.ts:497:35
+    495|       });
+    496| 
+    497|       expect(response.statusCode).toBe(200);
+       |                                   ^
+    498|       const body = JSON.parse(response.payload);
+    499|       expect(body.stats.hypothesisCoverage).toBeGreaterThan(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/19]⎯
+
+ FAIL  tests/e2e-slice1-slice2.test.ts > Slice 1 & 2 E2E Tests > Slice 1 & 2 Integration > should properly delete hypothesis with linked evidence
+TypeError: Cannot read properties of undefined (reading 'id')
+ ❯ tests/e2e-slice1-slice2.test.ts:542:62
+    540|       await server.inject({
+    541|         method: 'POST',
+    542|         url: `/api/v1/${engagementId}/evidence/${newEvidence.id}/hypot…
+       |                                                              ^
+    543|         headers: { 'Content-Type': 'application/json' },
+    544|         payload: {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/19]⎯
+
+ FAIL  tests/models.test.ts > Engagement Models > should create a valid engagement
+TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+ ❯ normalizeSector src/models/engagement.ts:274:29
+    272|     'media_entertainment': 'media',
+    273|   };
+    274|   const normalized = sector.toLowerCase();
+       |                             ^
+    275|   if (sectorMap[normalized]) {
+    276|     return sectorMap[normalized];
+ ❯ Module.createEngagement src/models/engagement.ts:327:13
+ ❯ tests/models.test.ts:136:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/19]⎯
+
+ FAIL  tests/services/llm-provider.test.ts > LLMProvider > initialize() > should initialize vertex-ai provider
+Error: [vitest] No "AnthropicVertex" export is defined on the "@anthropic-ai/vertex-sdk" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("@anthropic-ai/vertex-sdk"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ LLMProvider.initializeVertexAI src/services/llm-provider.ts:164:29
+    162| 
+    163|     // Create Vertex AI client
+    164|     this.vertexClient = new AnthropicVertex({
+       |                             ^
+    165|       projectId,
+    166|       region,
+ ❯ LLMProvider.initialize src/services/llm-provider.ts:124:7
+ ❯ tests/services/llm-provider.test.ts:119:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/19]⎯
+
+ FAIL  tests/services/llm-provider.test.ts > LLMProvider > getGoogleAuth() > should return auth service for vertex-ai provider
+Error: [vitest] No "AnthropicVertex" export is defined on the "@anthropic-ai/vertex-sdk" mock. Did you forget to return it from "vi.mock"?
+If you need to partially mock a module, you can use "importOriginal" helper inside:
+
+vi.mock(import("@anthropic-ai/vertex-sdk"), async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    // your mocked methods
+  }
+})
+
+ ❯ LLMProvider.initializeVertexAI src/services/llm-provider.ts:164:29
+    162| 
+    163|     // Create Vertex AI client
+    164|     this.vertexClient = new AnthropicVertex({
+       |                             ^
+    165|       projectId,
+    166|       region,
+ ❯ LLMProvider.initialize src/services/llm-provider.ts:124:7
+ ❯ tests/services/llm-provider.test.ts:208:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/19]⎯
+
+ Test Files  5 failed | 3 passed (8)
+      Tests  17 failed | 97 passed | 6 skipped (120)
+   Start at  14:54:13
+   Duration  4.25s (transform 602ms, setup 130ms, collect 6.03s, tests 2.94s, environment 1ms, prepare 393ms)
+

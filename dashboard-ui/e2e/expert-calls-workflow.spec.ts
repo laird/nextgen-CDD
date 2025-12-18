@@ -32,6 +32,12 @@ Key investment thesis points:
 3. Differentiated technology with proprietary ML models
 4. Sticky customer base with 95%+ renewal rates`;
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Path to test transcripts
 const TRANSCRIPT_DIR = path.join(__dirname, '../../thesis-validator/test-data/transcripts/dataflow');
 

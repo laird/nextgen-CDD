@@ -1,0 +1,36 @@
+SYNTHETIC TEST TRANSCRIPT. DO NOT USE.
+Expert Call Transcript - Cloudflare Investment Analysis
+Date: December 15, 2024
+Interviewee: Test Baker, VP of Engineering at Test Corp (Fortune 500 Manufacturing)
+
+Interviewer: Thanks for joining us today, Test. Can you start by telling us about your experience with Cloudflare at Test Corp?
+
+Test: Absolutely. We've been using Cloudflare for about three years now, initially starting with their CDN services and gradually expanding. Today we're running roughly 60% of our web traffic through their platform, handling about 2.5 million requests daily across our global manufacturing operations.
+
+Interviewer: What drove the initial adoption decision?
+
+Test: Honestly, it was a perfect storm of needs. We were experiencing DDoS attacks that were costing us roughly $50K per incident in downtime, and our legacy CDN provider was charging us almost $180K annually for subpar performance. Cloudflare came in at about 40% less cost while promising better security and performance. The migration took just two weeks compared to the 6-8 weeks our previous vendor quoted for upgrades.
+
+Interviewer: How has the performance compared to expectations?
+
+Test: It's exceeded them significantly. Our global page load times improved by an average of 35%, with our Asia-Pacific operations seeing 50%+ improvements. More importantly, we haven't had a successful DDoS attack since implementation. They've blocked over 1.2 million threats in the past year alone. Our uptime went from 99.2% to 99.7%, which translates to roughly $200K in prevented revenue loss annually.
+
+Interviewer: What about the expansion beyond CDN services?
+
+Test: That's where they really shine. We started adding their Zero Trust products about 18 months ago. Initially just for our remote workforce - about 2,800 employees - but now we're rolling it out company-wide. The seamless integration was impressive. No major infrastructure overhauls needed. We're seeing 25% faster remote access speeds and our IT security incidents dropped by 60%.
+
+Interviewer: Any challenges or concerns with Cloudflare?
+
+Test: The biggest challenge was actually internal - getting our traditional IT team comfortable with the concept. Some initial learning curve on their dashboard, but their support team was excellent. One concern I have is pricing predictability as we scale. While competitive now, I worry about potential increases as they gain more market dominance. We're also watching how they handle the increasing competition from AWS and Microsoft.
+
+Interviewer: How sticky would you say the relationship is?
+
+Test: Extremely sticky. We've integrated their APIs into our deployment pipeline, our monitoring systems rely on their analytics, and frankly, the switching costs would be substantial now. Not just monetary - we're talking months of engineering time and potential service disruptions. Plus, their network keeps expanding. They just added three new data centers in regions where we operate.
+
+Interviewer: What's your outlook on expanding usage?
+
+Test: Very positive. We're evaluating their Workers platform for edge computing applications, which could handle about 30% of our current server-side processing. ROI projections show potential $400K annual savings in infrastructure costs. The developer experience is genuinely impressive - my team can deploy changes in minutes versus hours with our current setup.
+
+Interviewer: Final thoughts on Cloudflare as a vendor?
+
+Test: They've become genuinely critical infrastructure for us. The combination of security, performance, and innovation keeps us confident in the partnership. My main advice to other enterprises is to start small but think big - their platform scales beautifully with your needs.

@@ -9,9 +9,10 @@
  */
 
 import { randomUUID } from 'crypto';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { createServer, type FastifyInstance } from '../src/api/index.js';
-import { getPool, initializeDatabase } from '../src/db/index.js';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import type { FastifyInstance } from 'fastify';
+import { createServer } from '../src/api/index.js';
+import { getPool, runMigrations } from '../src/db/index.js';
 import { getResearchQueue } from '../src/services/job-queue.js';
 import { ResearchWorker } from '../src/workers/research-worker.js';
 import WebSocket from 'ws';
@@ -22,9 +23,30 @@ describe('Research Workflow Integration', () => {
   let testEngagementId: string;
   let authToken: string;
 
+  // Mock ConductorAgent to avoid real LLM calls
+  vi.mock('../src/agents/index.js', () => ({
+    ConductorAgent: class MockConductorAgent {
+      async executeResearchWorkflow() {
+        return {
+          hypotheses: [
+            { statement: 'Hypothesis 1', priority: 5 },
+            { statement: 'Hypothesis 2', priority: 4 }
+          ],
+          evidence: [
+            { type: 'supporting', content: 'Evidence 1', confidence: 0.9 },
+            { type: 'neutral', content: 'Evidence 2', confidence: 0.5 }
+          ],
+          contradictions: [],
+          confidence: 85,
+          needsDeepDive: false
+        };
+      }
+    }
+  }));
+
   beforeAll(async () => {
     // Initialize database
-    await initializeDatabase();
+    await runMigrations();
 
     // Start server on test port
     server = await createServer({
@@ -44,21 +66,14 @@ describe('Research Workflow Integration', () => {
     const pool = getPool();
     const result = await pool.query(
       `INSERT INTO engagements (
-        id, name, client_name, deal_type, target_company,
-        investment_thesis, status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        id, target_company, sector, description, deal_type, status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [
         randomUUID(),
-        'Test Engagement',
-        'Test Client',
+        'Test Corp',
+        'Technology',
+        'Test company',
         'buyout',
-        JSON.stringify({
-          name: 'Test Corp',
-          description: 'Test company',
-          industry: 'Technology',
-          geography: 'North America',
-        }),
-        'Test investment thesis',
         'active',
         'test-user',
       ]
@@ -103,7 +118,10 @@ describe('Research Workflow Integration', () => {
       },
     });
 
-    expect(response.statusCode).toBe(200);
+    if (response.statusCode !== 202) {
+      console.error('API Error:', response.statusCode, response.body);
+    }
+    expect(response.statusCode).toBe(202);
     const body = JSON.parse(response.body);
     expect(body.job_id).toBeDefined();
     expect(body.status).toBe('queued');

@@ -15,7 +15,7 @@ declare global {
 // Priority: runtime config > env var > relative URLs (nginx proxy) > localhost dev
 function getApiBaseUrl(): string {
   // Runtime config (set at container startup, allows override without rebuild)
-  if (typeof window !== 'undefined' && window.__CONFIG__?.API_URL) {
+  if (typeof window !== 'undefined' && window.__CONFIG__?.API_URL && !window.__CONFIG__.API_URL.includes('PLACEHOLDER')) {
     return window.__CONFIG__.API_URL;
   }
   // Build-time env var
