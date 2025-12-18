@@ -100,6 +100,14 @@ export class WebSearchService {
       });
 
       if (!httpResponse.ok) {
+        // Handle Quota Exceeded specifically
+        if (httpResponse.status === 432 || httpResponse.status === 429) {
+          console.warn(`[WebSearchService] Tavily API Quota Exceeded (${httpResponse.status}). Falling back to mock search.`);
+          return this.mockSearch(query, opts, startTime);
+        }
+
+        const errorText = await httpResponse.text();
+        console.error(`[WebSearchService] Tavily API Error Body: ${errorText}`);
         throw new Error(`Tavily API error: ${httpResponse.status} ${httpResponse.statusText}`);
       }
 
@@ -151,6 +159,11 @@ export class WebSearchService {
       return searchResponse;
     } catch (error) {
       console.error('[WebSearchService] Search error:', error);
+
+      // Also fallback if we caught the error above (though the return inside if handles it)
+      // or if network failed completely, maybe we should fallback?
+      // For now, only fallback on explicit quota error logic above.
+
       throw error;
     }
   }
