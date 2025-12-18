@@ -164,14 +164,20 @@ async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
 
     await job.updateProgress(90);
 
+    // Sanitize confidence score - handle NaN, undefined, or out-of-range values
+    const rawConfidence = results.confidence;
+    const confidenceScore = (typeof rawConfidence === 'number' && !isNaN(rawConfidence))
+      ? Math.max(0, Math.min(100, rawConfidence))
+      : 50; // Default to 50% if invalid
+
     // Update job status to completed
     await pool.query(
       `UPDATE research_jobs
        SET status = $1, completed_at = NOW(), confidence_score = $2, results = $3
        WHERE id = $4`,
-      ['completed', results.confidence, JSON.stringify({
-        verdict: results.confidence > 70 ? 'proceed' : 'review',
-        summary: `Research completed with ${results.confidence.toFixed(1)}% confidence`,
+      ['completed', confidenceScore, JSON.stringify({
+        verdict: confidenceScore > 70 ? 'proceed' : 'review',
+        summary: `Research completed with ${confidenceScore.toFixed(1)}% confidence`,
         key_findings: results.hypotheses.map(h => h.statement),
         risks: results.contradictions,
         opportunities: [],
@@ -185,12 +191,12 @@ async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
       message: 'Research job completed successfully',
       progress: 100,
       data: {
-        confidence: results.confidence,
-        verdict: results.confidence > 70 ? 'proceed' : 'review',
+        confidence: confidenceScore,
+        verdict: confidenceScore > 70 ? 'proceed' : 'review',
       },
     });
 
-    console.log(`[ResearchWorker] Job ${job.id} completed with ${results.confidence.toFixed(1)}% confidence`);
+    console.log(`[ResearchWorker] Job ${job.id} completed with ${confidenceScore.toFixed(1)}% confidence`);
 
   } catch (error) {
     console.error(`[ResearchWorker] Job ${job.id} failed:`, error);
