@@ -16,19 +16,32 @@ Thesis Validator is a multi-agent AI system designed to validate, pressure-test,
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      API Layer                               │
-│  (REST + WebSocket)                                         │
+│  (Fastify REST + WebSocket + JWT Auth)                      │
+├─────────────────────────────────────────────────────────────┤
+│                  Background Workers (BullMQ)                 │
+│  Research Worker (10min lock)  │  Document Processor (2x)   │
 ├─────────────────────────────────────────────────────────────┤
 │                    Workflow Layer                            │
 │  Research │ Stress Test │ Expert Call │ Closeout            │
 ├─────────────────────────────────────────────────────────────┤
 │                     Agent Layer                              │
 │  Conductor │ Hypothesis │ Evidence │ Contradiction │ Expert │
+│  ComparablesFinder │ ExpertSynthesizer                       │
 ├─────────────────────────────────────────────────────────────┤
-│                    Memory Layer                              │
+│                   Repository Layer                           │
+│  Engagement │ Hypothesis │ Evidence │ Contradiction │ Docs  │
+│  ResearchJob │ Metrics │ StressTest                          │
+├─────────────────────────────────────────────────────────────┤
+│                    Memory Layer (Vector)                     │
 │  Deal Memory │ Institutional Memory │ Market Intelligence   │
+│  Reflexion Store │ Skill Library                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     Tools Layer                              │
 │  Embedding │ Web Search │ Doc Parser │ Credibility │ Trans  │
+├─────────────────────────────────────────────────────────────┤
+│                    Infrastructure                            │
+│  PostgreSQL 16 │ Redis 7 + BullMQ │ Ruvector (Vector DB)    │
+│  Claude (Anthropic/Vertex AI) │ OpenAI (Embeddings)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -260,28 +273,81 @@ DISABLE_AUTH=true  # For development only
 ```
 thesis-validator/
 ├── src/
-│   ├── models/          # Data models and schemas
-│   ├── memory/          # Vector memory layer
-│   ├── tools/           # External integrations
-│   ├── agents/          # AI agents
-│   ├── workflows/       # Business workflows
-│   ├── api/             # REST & WebSocket API
-│   └── config/          # Configuration
+│   ├── agents/          # AI agents (conductor, hypothesis-builder, etc.)
+│   ├── api/             # Fastify REST & WebSocket API
+│   │   └── routes/      # Route handlers for each resource
+│   ├── config/          # Environment configuration
+│   ├── memory/          # Vector memory (deal, institutional, market)
+│   ├── models/          # Zod schemas and data models
+│   ├── repositories/    # PostgreSQL data access layer
+│   ├── services/        # LLM provider abstraction, auth, job queue
+│   ├── tools/           # External integrations (web search, embedding)
+│   ├── workers/         # BullMQ background workers
+│   │   ├── research-worker.ts        # Long-running research jobs
+│   │   └── document-processor.worker.ts  # Document parsing
+│   └── workflows/       # Business workflows (research, stress-test)
+├── migrations/          # Database migration scripts
 ├── scripts/             # Utility scripts
-├── tests/               # Test suites
-└── docker-compose.yml   # Infrastructure
+├── tests/               # Vitest test suites
+├── docs/                # Technical documentation
+└── docker-compose.yml   # Local infrastructure
 ```
 
 ### Scripts
 
 ```bash
-npm run dev          # Start development server
+# Development
+npm run dev          # Start development server with hot reload
+npm run worker       # Start BullMQ worker for background jobs
 npm run build        # Build for production
-npm run test         # Run tests
-npm run db:init      # Initialize database
+npm run start        # Run production build
+
+# Testing
+npm test             # Run tests once
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage
+
+# Database
+npm run db:init      # Initialize vector database schema
+npm run db:schema    # Create PostgreSQL tables (first install only)
+npm run db:migrate   # Run pending migrations
 npm run seed:skills  # Seed skill library
-npm run benchmark    # Run benchmarks
+
+# Quality
+npm run typecheck    # TypeScript type checking
+npm run lint         # Run ESLint
+npm run lint:fix     # Auto-fix lint issues
+npm run benchmark    # Run performance benchmarks
 ```
+
+## Background Workers
+
+The system uses BullMQ for processing long-running tasks asynchronously.
+
+### Research Worker
+
+Processes research workflows that can take several minutes:
+
+```bash
+# Start the worker (separate terminal)
+npm run worker
+```
+
+**Configuration:**
+- Queue name: `research-jobs`
+- Lock duration: 10 minutes (prevents job reassignment during processing)
+- Lock renewal: Every 5 minutes
+- Rate limiting: Max 10 jobs per minute
+- Progress updates: Real-time via Redis pub/sub
+
+### Document Processor Worker
+
+Processes uploaded documents (PDF, DOCX, etc.):
+
+- Queue name: `document-processing`
+- Concurrency: 2 workers
+- Extracts text, creates chunks, generates embeddings
+- Updates document status in PostgreSQL
 
 ## License
 

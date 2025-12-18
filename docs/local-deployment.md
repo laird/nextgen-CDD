@@ -1,6 +1,6 @@
 # Local Development & Sandbox Deployment Guide
 
-**Last Updated:** 2025-12-11
+**Last Updated:** 2025-12-18
 
 This guide provides step-by-step instructions for setting up the Thesis Validator application locally for development and testing before deploying to GCP.
 
@@ -53,6 +53,8 @@ You'll need the following API keys before starting:
 | **OpenAI API Key** | Text embeddings | [platform.openai.com](https://platform.openai.com/) |
 | **Tavily API Key** | Web search | [tavily.com](https://tavily.com/) |
 | **Alpha Vantage Key** | Financial data (optional) | [alphavantage.co](https://www.alphavantage.co/support/#api-key) |
+
+> **Tip:** For local development without API costs, you can use [Ollama](https://ollama.ai) with open-source models. See the [LLM Provider Options](#switching-llm-providers) section.
 
 ---
 
@@ -429,6 +431,22 @@ cd dashboard-ui
 npm run dev
 ```
 
+### Running Background Workers
+
+For local development, workers run in-process with `npm run dev`. However, you can also run them separately for testing:
+
+**Terminal 4 - Dedicated Worker (Optional):**
+```bash
+cd thesis-validator
+npm run worker
+```
+
+The worker handles:
+- **Research Jobs** (research-jobs queue): Long-running research workflows
+- **Document Processing** (document-processing queue): PDF/DOCX parsing and embedding
+
+> **Note:** In local dev mode (`npm run dev`), workers automatically start with the API server. You only need a separate worker process if testing worker scaling or isolation.
+
 ### Common Development Tasks
 
 #### Type Checking
@@ -473,14 +491,15 @@ npm run benchmark
 
 ### Switching LLM Providers
 
-**To use Anthropic API (default):**
+**Option 1: Anthropic API (default, recommended for production-like dev)**
 ```bash
 # In .env
 LLM_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-20250514  # or claude-opus-4-20250514
 ```
 
-**To use Vertex AI (GCP):**
+**Option 2: Vertex AI (GCP)**
 ```bash
 # 1. Authenticate with GCP
 gcloud auth application-default login
@@ -489,10 +508,32 @@ gcloud auth application-default login
 LLM_PROVIDER=vertex-ai
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_REGION=us-central1
+VERTEX_AI_MODEL=claude-sonnet-4-20250514
 
 # 3. Restart the backend
 npm run dev
 ```
+
+**Option 3: Ollama (free, local, no API key needed)**
+```bash
+# 1. Install Ollama from https://ollama.ai
+
+# 2. Pull a model (llama3.2 recommended for balance of speed/quality)
+ollama pull llama3.2
+
+# 3. Start Ollama (if not already running)
+ollama serve
+
+# 4. Update .env
+LLM_PROVIDER=ollama
+LLM_MODEL=llama3.2
+OLLAMA_BASE_URL=http://localhost:11434  # Optional, this is the default
+
+# 5. Restart the backend
+npm run dev
+```
+
+> **Note:** Ollama is great for testing and development without API costs, but Claude models (via Anthropic or Vertex AI) provide significantly better results for complex research tasks.
 
 ### Resetting Development Environment
 
@@ -732,11 +773,14 @@ lsof -i :3000
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `LLM_PROVIDER` | Yes | `anthropic` | LLM backend: `anthropic` or `vertex-ai` |
+| `LLM_PROVIDER` | Yes | `anthropic` | LLM backend: `anthropic`, `vertex-ai`, or `ollama` |
+| `LLM_MODEL` | No | - | Override model for any provider |
 | `ANTHROPIC_API_KEY` | If anthropic | - | Anthropic API key |
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-4-20250514` | Claude model to use |
 | `GOOGLE_CLOUD_PROJECT` | If vertex-ai | - | GCP project ID |
 | `GOOGLE_CLOUD_REGION` | If vertex-ai | `us-central1` | GCP region |
+| `VERTEX_AI_MODEL` | No | `claude-sonnet-4-20250514` | Vertex AI model |
+| `OLLAMA_BASE_URL` | If ollama | `http://localhost:11434` | Ollama server URL |
 | `EMBEDDING_PROVIDER` | No | `openai` | Embedding provider: `openai` or `vertex-ai` |
 | `OPENAI_API_KEY` | Yes | - | OpenAI API key for embeddings |
 | `TAVILY_API_KEY` | Yes | - | Tavily API key for web search |

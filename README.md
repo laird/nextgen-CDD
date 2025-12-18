@@ -2,7 +2,7 @@
 
 A multi-agent AI system for private equity commercial and technical due diligence. Thesis Validator helps investment teams validate, pressure-test, and learn from investment theses using specialized AI agents.
 
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-18
 
 ## Overview
 
@@ -58,7 +58,15 @@ nextgen-CDD/
 │  ├── /api/v1/stress-tests     - Stress testing workflow                             │
 │  ├── /api/v1/metrics          - Research quality metrics                            │
 │  ├── /api/v1/skills           - Skill library management                            │
-│  └── /api/v1/research         - Research workflow execution                         │
+│  └── /api/v1/research         - Research workflow execution (BullMQ)                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                               Background Workers (BullMQ)                            │
+│  ┌───────────────────────────────────┐  ┌─────────────────────────────────────────┐ │
+│  │       Research Worker             │  │       Document Processor Worker         │ │
+│  │  (Long-running research jobs)     │  │   (PDF/DOCX parsing, embedding)         │ │
+│  │  - 10 min lock, 5 min renewal     │  │   - Concurrent processing (2 workers)   │ │
+│  │  - Real-time progress via pub/sub │  │   - Chunking and vector storage         │ │
+│  └───────────────────────────────────┘  └─────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                   AI Agents                                          │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────────┐ │
@@ -76,7 +84,17 @@ nextgen-CDD/
 │  │   Workflow    │  │   Workflow     │  │    Workflow     │  │    Workflow      │   │
 │  └───────────────┘  └────────────────┘  └─────────────────┘  └──────────────────┘   │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                Memory Layer                                          │
+│                              Repository Layer (PostgreSQL)                           │
+│  ┌──────────────┐ ┌───────────────┐ ┌─────────────┐ ┌──────────────┐ ┌────────────┐│
+│  │ Engagement   │ │  Hypothesis   │ │  Evidence   │ │Contradiction │ │  Metrics   ││
+│  │ Repository   │ │  Repository   │ │ Repository  │ │ Repository   │ │ Repository ││
+│  └──────────────┘ └───────────────┘ └─────────────┘ └──────────────┘ └────────────┘│
+│  ┌──────────────┐ ┌───────────────┐ ┌─────────────┐                                │
+│  │  Document    │ │ ResearchJob   │ │ StressTest  │                                │
+│  │ Repository   │ │  Repository   │ │ Repository  │                                │
+│  └──────────────┘ └───────────────┘ └─────────────┘                                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                              Memory Layer (Vector Store)                             │
 │  ┌───────────┐  ┌──────────────┐  ┌────────────┐  ┌───────────┐  ┌───────────────┐  │
 │  │   Deal    │  │Institutional │  │   Market   │  │ Reflexion │  │    Skills     │  │
 │  │  Memory   │  │   Memory     │  │Intelligence│  │   Store   │  │   Library     │  │
@@ -85,8 +103,8 @@ nextgen-CDD/
 │                               Infrastructure                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  ┌────────────────────────────┐ │
 │  │    Claude    │  │    Redis     │  │ PostgreSQL │  │      Vector Store          │ │
-│  │ (Anthropic   │  │   (BullMQ    │  │     16     │  │      (Ruvector)            │ │
-│  │ or Vertex AI)│  │    Queue)    │  │            │  │                            │ │
+│  │ (Anthropic   │  │  (BullMQ +   │  │     16     │  │      (Ruvector)            │ │
+│  │ or Vertex AI)│  │   Pub/Sub)   │  │            │  │                            │ │
 │  └──────────────┘  └──────────────┘  └────────────┘  └────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -122,6 +140,30 @@ nextgen-CDD/
 | **Market Intelligence** | Industry data, trends, and benchmarks |
 | **Reflexion Store** | Agent self-improvement and error correction |
 | **Skill Library** | Reusable analytical patterns (market sizing, competitive analysis, etc.) |
+
+### Background Workers (BullMQ)
+
+| Worker | Purpose | Configuration |
+|--------|---------|---------------|
+| **Research Worker** | Executes long-running research workflows asynchronously | 10-min lock, 5-min renewal, rate limited to 10/min |
+| **Document Processor** | Parses uploaded documents, extracts text, creates embeddings | 2 concurrent workers, chunking with overlap |
+
+Workers communicate progress via Redis pub/sub, enabling real-time status updates in the dashboard.
+
+### Repository Layer
+
+Eight repositories provide typed data access to PostgreSQL:
+
+| Repository | Purpose |
+|------------|---------|
+| **EngagementRepository** | Core engagement/deal data and lifecycle |
+| **HypothesisRepository** | Hypothesis trees with confidence tracking |
+| **EvidenceRepository** | Evidence collection with sentiment analysis |
+| **ContradictionRepository** | Contradiction detection and resolution |
+| **DocumentRepository** | Document upload and processing status |
+| **ResearchJobRepository** | Async job tracking and results |
+| **MetricsRepository** | Research quality metrics over time |
+| **StressTestRepository** | Stress test scenarios and results |
 
 ### Tools & Integrations
 
@@ -457,6 +499,16 @@ GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_REGION=us-central1
 # Uses Application Default Credentials (ADC)
 ```
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Developer Guide](docs/developer-guide.md) | Onboarding guide for new developers |
+| [Architecture](docs/architecture.md) | Design decisions and patterns |
+| [Local Deployment](docs/local-deployment.md) | Local development setup |
+| [GCP Deployment](docs/deployment.md) | Production deployment to GCP |
+| [CLAUDE.md](CLAUDE.md) | Coding conventions and guidelines |
 
 ## Deployment
 

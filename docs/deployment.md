@@ -2,7 +2,7 @@
 
 This guide covers deploying the Thesis Validator platform (backend API + web dashboard) to Google Cloud Platform from a fresh GCP instance.
 
-**Last Updated:** 2025-12-11
+**Last Updated:** 2025-12-18
 
 ## Table of Contents
 
@@ -90,7 +90,7 @@ Obtain these before starting deployment:
 
 | Component | GCP Service | Purpose |
 |-----------|-------------|---------|
-| Backend API | Cloud Run | Fastify REST API + WebSocket server |
+| Backend API | Cloud Run | Fastify REST API + WebSocket server + BullMQ workers |
 | Database | Cloud SQL (PostgreSQL 16) | Engagements, hypotheses, evidence, metrics |
 | Cache/Queue | Memorystore (Redis 7) | BullMQ job queue, caching |
 | LLM | Vertex AI | Claude for AI reasoning |
@@ -340,6 +340,8 @@ SQL_CONNECTION=$(gcloud sql instances describe thesis-validator-postgres \
   --format="value(connectionName)")
 
 # Deploy to Cloud Run
+# IMPORTANT: min-instances=1 is required for BullMQ workers to process jobs
+# Without it, the service scales to zero and no background jobs are processed
 gcloud run deploy $SERVICE_NAME \
   --image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${SERVICE_NAME}/${SERVICE_NAME}:latest \
   --region=$REGION \
@@ -347,7 +349,7 @@ gcloud run deploy $SERVICE_NAME \
   --allow-unauthenticated \
   --memory=2Gi \
   --cpu=2 \
-  --min-instances=0 \
+  --min-instances=1 \
   --max-instances=10 \
   --timeout=300 \
   --concurrency=80 \
@@ -562,6 +564,80 @@ gcloud run services update $SERVICE_NAME \
 
 ---
 
+## Background Workers (BullMQ)
+
+The Thesis Validator uses BullMQ for processing long-running asynchronous tasks. Understanding how workers function in Cloud Run is critical for successful deployment.
+
+### How Workers Run in Cloud Run
+
+Unlike traditional deployments where workers run as separate processes, the Cloud Run deployment runs workers **in-process** with the API server. When the Fastify server starts, it also initializes BullMQ workers that listen for jobs on Redis queues.
+
+```
+Cloud Run Instance
+├── Fastify API Server (handles HTTP/WebSocket requests)
+└── BullMQ Workers (process background jobs from Redis)
+    ├── Research Worker (research-jobs queue)
+    └── Document Processor (document-processing queue)
+```
+
+### Worker Configuration
+
+| Worker | Queue | Lock Duration | Purpose |
+|--------|-------|---------------|---------|
+| **Research Worker** | `research-jobs` | 10 minutes | Long-running research workflows with LLM calls |
+| **Document Processor** | `document-processing` | 5 minutes | PDF/DOCX parsing and embedding generation |
+
+### Critical: min-instances=1
+
+**You MUST set `min-instances=1` for workers to function.** If Cloud Run scales to zero:
+- No instances are running to pick up jobs from Redis queues
+- Research jobs will stay "queued" indefinitely
+- Users will see "Waiting for progress updates..." forever
+
+```bash
+# Ensure at least one instance is always running
+gcloud run services update $SERVICE_NAME \
+  --min-instances=1 \
+  --region=$REGION
+```
+
+### Worker Lock Management
+
+Research workflows can take 5-10+ minutes to complete. To prevent job reassignment during processing:
+
+- **Lock Duration**: 10 minutes (prevents Redis from reassigning the job)
+- **Lock Renewal**: Every 5 minutes (extends the lock while processing continues)
+- **Rate Limiting**: Max 10 jobs per minute (prevents overwhelming LLM APIs)
+
+### Monitoring Worker Health
+
+```bash
+# Check for worker-related log messages
+gcloud logging read 'resource.type="cloud_run_revision" AND
+  resource.labels.service_name="thesis-validator" AND
+  textPayload:"BullMQ"' \
+  --limit=20 \
+  --format=json
+
+# Check job processing logs
+gcloud logging read 'resource.type="cloud_run_revision" AND
+  resource.labels.service_name="thesis-validator" AND
+  (textPayload:"Research workflow" OR textPayload:"Phase")' \
+  --limit=50 \
+  --format=json
+```
+
+### Troubleshooting Workers
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| Jobs stay "queued" | min-instances=0 | Set min-instances=1 |
+| Jobs timeout after 10 min | Lock not extended | Check worker lock renewal logs |
+| Jobs fail repeatedly | Redis connection lost | Verify VPC connector and Redis connectivity |
+| Slow job processing | Too many concurrent jobs | Adjust worker concurrency settings |
+
+---
+
 ## CI/CD with Cloud Build
 
 The project includes a `cloudbuild.yaml` that automates:
@@ -745,14 +821,20 @@ done
      --role="roles/aiplatform.user"
    ```
 
-#### 5. Cold starts are slow
+#### 5. Cold starts are slow / Background jobs not processing
 
-**Solution:** Set minimum instances:
+**Symptom:** Cold starts are slow OR research jobs stay "queued" and never process
+
+**Solution:** Set minimum instances (REQUIRED for background workers):
 ```bash
+# This is REQUIRED for BullMQ workers to process research jobs
+# Without at least 1 instance running, background jobs will never be picked up
 gcloud run services update $SERVICE_NAME \
   --min-instances=1 \
   --region=$REGION
 ```
+
+> **Important:** The Thesis Validator uses BullMQ for long-running research workflows. These workers only process jobs when the Cloud Run instance is active. Setting `min-instances=1` ensures workers are always available to process background jobs. This has a small cost impact (~$15-30/month) but is essential for the system to function correctly.
 
 #### 6. CORS errors
 
