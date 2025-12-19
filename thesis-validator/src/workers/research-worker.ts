@@ -222,11 +222,6 @@ async function processResearchJob(job: Job<ResearchJobData>): Promise<void> {
       ? Math.max(0, Math.min(100, rawConfidence))
       : 50;
 
-    // Sanitize confidence score
-    const finalConfidence = (typeof results.confidence === 'number' && !Number.isNaN(results.confidence))
-      ? Math.max(0, Math.min(100, results.confidence))
-      : 0;
-
     // Update job status to completed
     await pool.query(
       `UPDATE research_jobs
